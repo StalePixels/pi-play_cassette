@@ -1,7 +1,8 @@
 CC = gcc
 
 CLIBS = -lasound -lm
-CFLAGS = -Iinc $(CLIBS)
+COPTS = -g 
+CFLAGS = -Iinc $(CLIBS) $(COPTS)
 
 DEPS = $(wildcard *.h)
 OBJS = shutdown.o usage.o \

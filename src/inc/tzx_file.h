@@ -40,6 +40,9 @@
 #define ERR_TZX_BETAS_NOT_SUPPORTED 0x85
 #define ERR_TZX_IS_ACTUALLY_TAP     0x86
 
+#define ERR_INVALID_STARTING_BLOCK  0x88
+#define ERR_INVALID_ENDING_BLOCK    0x89
+
 extern char *tzx_filename;
 extern FILE *tzx_filehandle;
 extern int32_t tzx_filesize;

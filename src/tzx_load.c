@@ -27,7 +27,7 @@ uint8_t tzx_load(char *filename) {
     }
     
     // Load the header
-    fread(tzx_data,1, 10, tzx_filehandle); 
+    fread(tzx_data, 10, 1, tzx_filehandle); 
     // Terminate the headerstring
     tzx_data[7]=0;
     
@@ -59,6 +59,9 @@ uint8_t tzx_load(char *filename) {
     if (tzx_data[8]==TZX_SUPPORTED_MAJOR_REV && tzx_data[9]>TZX_SUPPORTED_MINOR_REV) {
         printf("\n-- Warning: Some of the data might not be properly recognised!\n");
     }
+    
+    // Load the actual TZX data
+    fread(tzx_data, tzx_filesize-10, 1, tzx_filehandle); 
     
     return 0;
 }
