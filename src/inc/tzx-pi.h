@@ -1,11 +1,17 @@
+#ifndef _tzxpi_h
+#define _tzxpi_h
+
 #include <stdio.h>
 #include <stdbool.h>
 
 #include <alsa/asoundlib.h>
 #include <math.h>
 
-const char TZXTape[7] = {'Z','X','T','a','p','e','!'};
-const char TAPcheck[7] = {'T','A','P','t','a','p','.'};
+#define TZX_SUPPORTED_MAJOR_REV         1        // Major revision of the format this program supports
+#define TZX_SUPPORTED_MINOR_REV         13       // Minor revision of the same
+
+extern const char TZXTapeHeaderID[];
+extern const char TAPTapeHeaderID[];
 
 //TZX File Tasks
 #define GETFILEHEADER         0
@@ -40,3 +46,5 @@ const char TAPcheck[7] = {'T','A','P','t','a','p','.'};
 // 
 //************************************************************************************************//
 extern bool DEBUG;
+
+#endif // _tzxpi_h

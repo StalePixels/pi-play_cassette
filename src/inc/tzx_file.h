@@ -1,6 +1,10 @@
+#include <stdio.h>
 #include <stdint.h>
 
-//TZX block list - uncomment as supported
+#ifndef _tzxfile_h
+#define _tzxfile_h
+
+//TZX block list - uncomment as supported, list taken straight from sadken's TZXduino
 // #define TXZ_ID10                0x10    //Standard speed data block
 // #define TXZ_ID11                0x11    //Turbo speed data block
 // #define TXZ_ID12                0x12    //Pure tone
@@ -29,8 +33,17 @@
 // #define TXZ_TAP                 0xFE    //Tap File Mode
 // #define TXZ_EOF                 0xFF    //End of file
 
-#define ERR_TZX_FILE_OPEN_ERROR 0x81
-
+#define ERR_TZX_FILE_SIZE_ERROR     0x81
+#define ERR_TZX_FILE_OPEN_ERROR     0x82
+#define ERR_TZX_FILE_NO_MEMORY      0x83
+#define ERR_TZX_NOT_TZX_FILE        0x84
+#define ERR_TZX_BETAS_NOT_SUPPORTED 0x85
+#define ERR_TZX_IS_ACTUALLY_TAP     0x86
 
 extern char *tzx_filename;
-extern int tzx_filehandle;
+extern FILE *tzx_filehandle;
+extern int32_t tzx_filesize;
+extern int8_t *tzx_data;
+extern uint8_t tzx_version_major, tzx_version_minor;
+
+#endif // _tzxfile_h

@@ -2,7 +2,7 @@
 #include "shutdown.h"
 
 void usage(uint8_t exit_reason) {
-    printf("\n tzx-pi             GPIO controlled Interactive TZX decoder for NextPi");
+    printf("\n tzx-pi             GPIO controlled TZX decoder (initially for NextPi)");
     printf("\n--------           ====================================================\n");
     printf("\n OPTION             EXPLINATION\n");
     printf("\n  -d               Enable debug output");

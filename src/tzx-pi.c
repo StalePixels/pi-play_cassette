@@ -1,5 +1,3 @@
-
-
 #include <ctype.h>
 #include <unistd.h>
 
@@ -14,6 +12,9 @@
 static char *device = "default"; /* playback device */
 snd_output_t *output = NULL;
 float buffer[BUFFER_LEN];
+
+const char TZXTapeHeaderID[] = "ZXTape!";
+const char TAPTapeHeaderID[] = "TAPtap.";
 
 
 bool DEBUG = false;
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
         }
     }
 
-// Leftover option parsing
+    // Leftover option parsing
     for (int index = optind; index < argc; index++)
     {
         if(tzx_filename==NULL) 
@@ -77,22 +78,23 @@ int main(int argc, char *argv[])
         }
     }
     
-// Errorchecking
+    // Errorchecking
     if(tzx_filename==NULL)
     {
         usage(EXIT_NO_FILENAME);
     }
 
-    if(DEBUG) {
-        printf ("\tDEBUG   \t:\tENABLED\n");
-        printf ("\tDATAFILE\t:\t\"%s\"\n", tzx_filename);
-    }
-    
     uint8_t load_error = tzx_load(tzx_filename);
     if(load_error) {
-        
-        shutdown(ERR_TZX_FILE_OPEN_ERROR, tzx_filename);
+        shutdown(load_error, tzx_filename);
     }
+    
+    if(DEBUG) {
+        printf("\tDEBUG   \t:\tENABLED\n");
+        printf("\tDATAFILE\t:\t\"%s\"\n", tzx_filename);
+        printf("\tFILE VER.\t:\t%d.%02d\n", tzx_version_major, tzx_version_minor);
+    }
+    
 //************************************************************************************************//
 // 
 // SETTING UP SOUND CARD
