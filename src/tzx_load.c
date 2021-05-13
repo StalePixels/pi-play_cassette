@@ -2,10 +2,10 @@
 #include "tzx_file.h"
 #include "tzx-pi.h"
 
-uint8_t tzx_load(char *filename) {
+uint8_t tzx_load() {
     struct stat st; // file metadata
 
-    if(!stat(filename,&st))
+    if(!stat(tzx_filename,&st))
     {
         tzx_filesize = st.st_size;
     }
@@ -14,7 +14,7 @@ uint8_t tzx_load(char *filename) {
         return ERR_TZX_FILE_SIZE_ERROR;
     }
     
-    tzx_filehandle = fopen(filename,"rb");
+    tzx_filehandle = fopen(tzx_filename,"rb");
     if(tzx_filehandle==NULL)
     {
         return ERR_TZX_FILE_OPEN_ERROR;

@@ -40,11 +40,23 @@ extern const char TAPTapeHeaderID[];
 #define PAUSELENGTH           1000
 
 
+#define BUFFER_LEN 448000
+
 //************************************************************************************************//
 // 
 // "Global" variables
 // 
 //************************************************************************************************//
 extern bool DEBUG;
+extern int samplefreq;         //soundcard audio sample frequency
 
+extern snd_output_t *output;            // snd output
+// float buffer[BUFFER_LEN];
+extern uint8_t buffer[2][BUFFER_LEN];          // rotating buggers
+extern uint8_t active_buffer;                  // which of our buffers we are using
+
+extern const char TZXTapeHeaderID[];                   // TZX identifing header
+extern const char TAPTapeHeaderID[];                   // TAP identifying header (not yet used)
+extern int buf_index;
+extern snd_pcm_t *alsa_handle;
 #endif // _tzxpi_h
