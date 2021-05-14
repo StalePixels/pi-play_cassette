@@ -7,9 +7,9 @@ CFLAGS = -Iinc $(CLIBS) $(COPTS)
 DEPS = $(wildcard *.h)
 OBJS = shutdown.o usage.o \
 		tzx_file.o tzx_load.o \
-		tzx_block_info.o tzx_compute_checksum.o \
+		tzx_get_block_type.o tzx_display_checksum.o \
 		tzx_ticks_to_samples.o tzx_toggle_amplitude.o \
-		tzx_play_audio.o tzx_pause_audio.o \
+		tzx_play_audio.o tzx_pause_audio.o tzx_finish_audio.o \
 		tzx-pi.o 
 
 .PHONY: clean tzx-pi

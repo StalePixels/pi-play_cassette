@@ -5,8 +5,8 @@
 #define _tzxfile_h
 
 //TZX block list - uncomment as supported, list taken straight from sadken's TZXduino
-// #define TXZ_ID10                0x10    //Standard speed data block
-// #define TXZ_ID11                0x11    //Turbo speed data block
+#define TXZ_ID10_STANDARD                0x10    //Standard speed data block
+#define TXZ_ID11_TURBO                   0x11    //Turbo speed data block
 // #define TXZ_ID12                0x12    //Pure tone
 // #define TXZ_ID13                0x13    //Sequence of pulses of various lengths
 // #define TXZ_ID14                0x14    //Pure data block

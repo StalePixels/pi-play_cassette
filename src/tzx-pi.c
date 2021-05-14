@@ -6,12 +6,13 @@
 #include "shutdown.h"
 #include "tzx_file.h"
 #include "tzx_load.h"
-#include "tzx_block_info.h"
-#include "tzx_compute_checksum.h"
+#include "tzx_get_block_type.h"
+#include "tzx_display_checksum.h"
 #include "tzx_ticks_to_samples.h"
 #include "tzx_toggle_amplitude.h"
 #include "tzx_play_audio.h"
 #include "tzx_pause_audio.h"
+#include "tzx_finish_audio.h"
 
 static char *device = "default"; /* playback device */
 snd_output_t *output = NULL;
@@ -25,380 +26,400 @@ const char TZXTapeHeaderID[] = "ZXTape!";
 const char TAPTapeHeaderID[] = "TAPtap.";
 
 bool DEBUG = false;
-int samplefreq = 44800;         //soundcard audio sample frequency
+bool VERBOSE = false;
+int samplefreq = 44800; //soundcard audio sample frequency
 
 // Conversion functions to get 2,3 and 4 byte words ...
 int get_uint16(char *ptr)
 {
-    return(ptr[0] + (ptr[1]*256));
+	return (ptr[0] + (ptr[1] * 256));
 }
 
 int get_uint24(char *ptr)
 {
-    return(get_uint16(ptr) + (ptr[2]*256*256));
+	return (get_uint16(ptr) + (ptr[2] * 256 * 256));
 }
 
 int get_uint32(char *ptr)
 {
-    return(get_uint24(ptr) + (ptr[3]*256*256*256));
+	return (get_uint24(ptr) + (ptr[3] * 256 * 256 * 256));
 }
 
 int main(int argc, char *argv[])
 {
-    int err;
+	int err;
 
-    int i;
+	int i;
 
-    int sinefreq = 440;
-    
-    // int playfreq = 44800;
-    
-    double cpufreq = 3500000.0;
-    // double cpufreq = 7000000.0;
-    
-    tzx_dutycycle = samplefreq / cpufreq;
+	int sinefreq = 440;
 
-    snd_pcm_sframes_t frames;
+	// int playfreq = 44800;
 
-//************************************************************************************************//
-// 
-// PARSE OPTIONS
-// 
-//************************************************************************************************//
-    opterr = 0;
+	double cpufreq = 3500000.0;
+	// double cpufreq = 7000000.0;
 
-    int c;
-    while ((c = getopt (argc, argv, "dht:")) != -1) {
-        switch (c)
-        {
-        case 'd':
-            DEBUG = true;
-            break;
-        case 'h':
-            usage(EXIT_SUCCESS);
-        case 't':
-            tzx_filename = optarg;
-            break;
-        case '?':
-            if (optopt == 'c')
-                fprintf (stderr, "Option -%t requires an filename.\n", optopt);
-            else if (isprint (optopt))
-                fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-            else
-                fprintf (stderr,
-                    "Unknown option character `\\x%x'.\n",
-                    optopt);
-            return 1;
-        default:
-            abort ();
-        }
-    }
+	tzx_dutycycle = samplefreq / cpufreq;
 
-    // Leftover option parsing
-    for (int index = optind; index < argc; index++)
-    {
-        if(tzx_filename==NULL) 
-        {
-            tzx_filename = argv[index];
-        }
-        else if(DEBUG)
-        {
-            printf ("Ignoring option: \"%s\"\n", argv[index]);
-        }
-    }
-    
+	snd_pcm_sframes_t frames;
 
-//************************************************************************************************//
-// 
-// LOAD TZX DATA
-// 
-//************************************************************************************************//
-    // Errorchecking
-    if(tzx_filename==NULL)
-    {
-        usage(EXIT_NO_FILENAME);
-    }
+	//************************************************************************************************//
+	//
+	// PARSE OPTIONS
+	//
+	//************************************************************************************************//
+	opterr = 0;
 
-    uint8_t load_error = tzx_load();
-    if(load_error) {
-        shutdown(load_error, tzx_filename);
-    }
-    
-    if(DEBUG) {
-        printf("\tDEBUG   \t:\tENABLED\n");
-        printf("\tDATAFILE\t:\t\"%s\"\n", tzx_filename);
-        printf("\tFILE VER.\t:\t%d.%02d\n", tzx_version_major, tzx_version_minor);
-    }
-    
-//************************************************************************************************//
-// 
-// LOAD TZX DATA
-// 
-//************************************************************************************************//
-    int unrecognised_block = 0;
-    int tzx_blockcount=0;
-    int tzx_data_current_position=0;        // How far into the datastream we are, an index
-    int tzx_block_offsets[2048];            // Array of offsets into the data that a block starts
-    int tzx_starting_block = 1;
-    int tzx_current_block;
-    int tzx_ending_block = 0;
-    
-    while(tzx_data_current_position<tzx_filesize-10)
-    {
-        tzx_block_offsets[tzx_blockcount]=tzx_data_current_position;
-        
-        printf("block at offset %x\n", tzx_data_current_position);
-        printf("block at offset %x: %x\n", tzx_data_current_position, tzx_data[tzx_data_current_position]);
-        
-        tzx_data_current_position++;
-        switch(tzx_data[tzx_data_current_position-1])
-        {
-            case 0x10:
-                tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position+0x02])+0x04;
-                break;
-            case 0x11:
-                tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position+0x0F])+0x12;
-                break;
-            case 0x12:
-                tzx_data_current_position += 0x04;
-                break;
-            case 0x13:
-                tzx_data_current_position += (tzx_data[tzx_data_current_position+0x00]*0x02)+0x01;
-                break;
-            case 0x14:
-                tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position+0x07])+0x0A;
-                break;
-            case 0x15:  
-                tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position+0x05])+0x08;
-                break;
-            case 0x16:
-                tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position+0x00])+0x04;
-                break;
-            case 0x17:
-                tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position+0x00])+0x04;
-                break;
+	int c;
+	while ((c = getopt(argc, argv, "0dht:")) != -1)
+	{
+		switch (c)
+		{
+		case 'd':
+			DEBUG = true;
+			break;
+		case 'l':
+			VERBOSE = true;
+			break;
+		case 'h':
+			usage(EXIT_SUCCESS);
+		case 't':
+			tzx_filename = optarg;
+			break;
+		case '0':
+			tzx_silent = true;
+			break;
+		case '?':
+			if (optopt == 'c')
+				fprintf(stderr, "Option -%t requires an filename.\n", optopt);
+			else if (isprint(optopt))
+				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+			else
+				fprintf(stderr,
+					"Unknown option character `\\x%x'.\n",
+					optopt);
+			return 1;
+		default:
+			abort();
+		}
+	}
 
-            case 0x20:
-                tzx_data_current_position += 0x02;
-                break;
-            case 0x21:
-                tzx_data_current_position += tzx_data[tzx_data_current_position+0x00]+0x01;
-                break;
-            case 0x22:
-                break;
-            case 0x23:
-                tzx_data_current_position += 0x02;
-                break;
-            case 0x24:
-                tzx_data_current_position += 0x02;
-                break;
-            case 0x25:
-                break;
-            case 0x26:
-                tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position+0x00])*0x02+0x02;
-                break;
-            case 0x27:
-                break;
-            case 0x28:
-                tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position+0x00])+0x02;
-                break;
+	// Leftover option parsing
+	for (int index = optind; index < argc; index++)
+	{
+		if (tzx_filename == NULL)
+		{
+			tzx_filename = argv[index];
+		}
+		else if (DEBUG)
+		{
+			printf("Ignoring option: \"%s\"\n", argv[index]);
+		}
+	}
 
-            case 0x2A:
-                tzx_data_current_position += 0x04;
-                break;
+	//************************************************************************************************//
+	//
+	// LOAD TZX DATA
+	//
+	//************************************************************************************************//
+	// Errorchecking
+	if (tzx_filename == NULL)
+	{
+		usage(EXIT_NO_FILENAME);
+	}
 
-            case 0x30:
-                tzx_data_current_position += tzx_data[tzx_data_current_position+0x00]+0x01;
-                break;
-            case 0x31:
-                tzx_data_current_position += tzx_data[tzx_data_current_position+0x01]+0x02;
-                break;
-            case 0x32:
-                tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position+0x00])+0x02;
-                break;
-            case 0x33:
-                tzx_data_current_position += (tzx_data[tzx_data_current_position+0x00]*0x03)+0x01;
-                break;
-            case 0x34:
-                tzx_data_current_position += 0x08; break;
-            case 0x35:
-                tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position+0x10])+0x14;
-                break;
+	uint8_t load_error = tzx_load();
+	if (load_error)
+	{
+		shutdown(load_error, tzx_filename);
+	}
 
-            case 0x40:
-                tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position+0x01])+0x04;
-                break;
+	if (DEBUG)
+	{
+		printf("                 DEBUG: ENABLED\n");
+		printf("              DATAFILE: \"%s\"\n", tzx_filename);
+		printf("          FILE VERSION: %d.%02d\n", tzx_version_major, tzx_version_minor);
+		printf("              SILENCED: %s\n", tzx_silent ? "YES" : "NO");
+	}
 
-            case 0x5A:
-                tzx_data_current_position += 0x09; break;
+	//************************************************************************************************//
+	//
+	// LOAD TZX DATA
+	//
+	//************************************************************************************************//
+	int unrecognised_block = 0;
+	int tzx_blockcount = 0;
+	int tzx_data_current_position = 0; // How far into the datastream we are, an index
+	int tzx_block_offsets[2048];	   // Array of offsets into the data that a block starts
+	int tzx_starting_block = 1;
+	int tzx_current_block;
+	int tzx_ending_block = 0;
 
-            default:   tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position+0x00])+0x04;
-                    unrecognised_block++;
-        }
-        tzx_blockcount++;
-    }
-    
-    printf("\tTOTAL BLOCKS\t:\t%d\n", tzx_blockcount);
-    if (unrecognised_block)
-    {
-        printf("\tUNKNOWN BLOCKS.\t:\t%d\n", unrecognised_block);
-    }
+	while (tzx_data_current_position < tzx_filesize - 10)
+	{
+		tzx_block_offsets[tzx_blockcount] = tzx_data_current_position;
+		tzx_data_current_position++;
 
-//************************************************************************************************//
-// 
-// SET THE START AND END BLOCKS
-// 
-//************************************************************************************************//
-    uint8_t tzx_current_block_type = 0;
-    uint8_t *tzx_current_data;
-    
-    tzx_current_block=0;
-    if (tzx_starting_block>1)
-    {
-        if (tzx_starting_block > tzx_blockcount)
-        {
-            char blocks[5];
-            sprintf(blocks,"%d",tzx_starting_block);
-            shutdown(ERR_INVALID_STARTING_BLOCK, blocks);
-        }
+		switch (tzx_data[tzx_data_current_position - 1])
+		{
+		case TXZ_ID10_STANDARD:
+			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x02]) + 0x04;
+			break;
+		case TXZ_ID11_TURBO:
+			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x0F]) + 0x12;
+			break;
+		case 0x12:
+			tzx_data_current_position += 0x04;
+			break;
+		case 0x13:
+			tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x02) + 0x01;
+			break;
+		case 0x14:
+			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x07]) + 0x0A;
+			break;
+		case 0x15:
+			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x05]) + 0x08;
+			break;
+		case 0x16:
+			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+			break;
+		case 0x17:
+			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+			break;
 
-        tzx_current_block=tzx_starting_block - 1;
-    }
-    
-    if (tzx_ending_block > 0)
-    {
-        if (tzx_ending_block>tzx_blockcount || tzx_ending_block<tzx_starting_block)
-        {
-            char blocks[5];
-            sprintf(blocks,"%d",tzx_ending_block);
-            shutdown(ERR_INVALID_ENDING_BLOCK, blocks);
-        }
-        tzx_blockcount=tzx_ending_block;
-    }
+		case 0x20:
+			tzx_data_current_position += 0x02;
+			break;
+		case 0x21:
+			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
+			break;
+		case 0x22:
+			break;
+		case 0x23:
+			tzx_data_current_position += 0x02;
+			break;
+		case 0x24:
+			tzx_data_current_position += 0x02;
+			break;
+		case 0x25:
+			break;
+		case 0x26:
+			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) * 0x02 + 0x02;
+			break;
+		case 0x27:
+			break;
+		case 0x28:
+			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
+			break;
 
+		case 0x2A:
+			tzx_data_current_position += 0x04;
+			break;
 
-    printf("\nStarting playback on using %d Hz frequency.\n\n",samplefreq);
+		case 0x30:
+			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
+			break;
+		case 0x31:
+			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x01] + 0x02;
+			break;
+		case 0x32:
+			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
+			break;
+		case 0x33:
+			tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x03) + 0x01;
+			break;
+		case 0x34:
+			tzx_data_current_position += 0x08;
+			break;
+		case 0x35:
+			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x10]) + 0x14;
+			break;
 
-//************************************************************************************************//
-// 
-// SETTING UP SOUND CARD
-// 
-//************************************************************************************************//
-    if ((err = snd_pcm_open(&alsa_handle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0)
-    {
-        shutdown(EXIT_NO_SOUNDCARD, snd_strerror(err));
-    }
+		case 0x40:
+			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x01]) + 0x04;
+			break;
 
-    if ((err = snd_pcm_set_params(alsa_handle,
-                                  SND_PCM_FORMAT_U8,
-                                  SND_PCM_ACCESS_RW_INTERLEAVED,
-                                  1,
-                                  samplefreq,
-                                  1,
-                                  500000)) < 0)
-    { /* 0.5sec */
-        shutdown(EXIT_PARAMS_SOUNDCARD, snd_strerror(err));
-    }
+		case 0x5A:
+			tzx_data_current_position += 0x09;
+			break;
 
-//************************************************************************************************//
-// 
-// SEND DATA TO SOUND CARD
-// 
-//************************************************************************************************//
-    int tzx_pause;                          // Duration of silence in "Half Pulses"
-    int tzx_current_datablock_size;         //  This datablock, size
-    int tzx_current_datablock_position;     //  This datablock, current position
-    int tzx_pilot;                          // Size of pilot signal in "Half Pulses"
-    int tzx_audio_pilot;                    // Actual Pilot Pulse
-    int tzx_audio_sync1;                    // Sync first half-period (hp)
-    int tzx_audio_sync2;                    // Sync second
-    int tzx_audio_bit0;                     // Bit-0
-    int tzx_audio_bit1;                     // Bit-1
-    int tzx_audio_bit;                      // Current audio bit
-    int tzx_audio_pulse;                    // Pulse in Sequence of pulses and direct recording block
-    int tzx_speed;                          // Audio datarate (not related to CPU speed)
-    uint8_t tzx_this_byte;                  // Current Byte to be replayed of the data */
-    uint8_t tzx_bits_in_this_byte;          // How many bits of data we are processing this time.
-    uint8_t tzx_bits_in_last_byte;          // Number of bits in the last byte of data
-    
-    // Start replay of blocks ...
-    while (tzx_current_block<tzx_blockcount)
-    {
-        printf("Block %3d-%5X:",tzx_current_block+1, tzx_block_offsets[tzx_current_block]+10);
+		default:
+			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+			unrecognised_block++;
+		}
+		tzx_blockcount++;
+	}
 
-        tzx_current_block_type = tzx_data[tzx_block_offsets[tzx_current_block]];
-        tzx_current_data = &tzx_data[tzx_block_offsets[tzx_current_block]+1];
-        
-        switch (tzx_current_block_type)
-        {
-            // Standard Loading Data block
-            case 0x10:
-                tzx_pause = get_uint16(&tzx_current_data[0]);
-                tzx_current_datablock_size = get_uint16(&tzx_current_data[2]);
-                tzx_current_data += 4;
-                if (tzx_current_data[0] == 0x00){
-                    tzx_pilot=8064;
-                }
-                else
-                {
-                    tzx_pilot=3220;
-                }
-                tzx_audio_pilot=tzx_ticks_to_samples(2168);
-                tzx_audio_sync1=tzx_ticks_to_samples(667);
-                tzx_audio_sync2=tzx_ticks_to_samples(735);
-                tzx_audio_bit0=tzx_ticks_to_samples(885);
-                tzx_audio_bit1=tzx_ticks_to_samples(1710);
-                tzx_bits_in_last_byte=8;
-                if (DEBUG)
-                {
-                    // Identify(tzx_current_datablock_size,data,1);
-                    printf("Block %3d (%5X):  10 - Standard Loading Data\n",tzx_current_block+1,
-                        tzx_block_offsets[tzx_current_block]+10);
-                    printf("                Length: %5d bytes\n",tzx_current_datablock_size);
-                    printf("                  Flag: %5d ($%02X)\n",tzx_current_data[0],tzx_current_data[0]);
-                    printf("              CheckSum: %5d ($%02X) - ",
-                        tzx_current_data[tzx_current_datablock_size-1],
-                        tzx_current_data[tzx_current_datablock_size-1]);
-                    tzx_compute_checksum(tzx_current_data,tzx_current_datablock_size);
-                    printf("\n");
-                    printf("     Pause after block: %5d milliseconds\n",tzx_pause);
-                }
-                printf("\n");
-                break;
-        /*
-            // // Custom Loading Data block
-            // case 0x11:
-            //     sb_pilot=tzx_ticks_to_samples(get_uint16(&data[0]));
-            //     sb_sync1=tzx_ticks_to_samples(get_uint16(&data[2]));
-            //     sb_sync2=tzx_ticks_to_samples(get_uint16(&data[4]));
-            //     sb_bit0=tzx_ticks_to_samples(get_uint16(&data[6]));
-            //     sb_bit1=tzx_ticks_to_samples(get_uint16(&data[8]));
-            //     tzx_speed=(int) ((1710.0/(double) get_uint16(&data[8]))*100.0);
-            //     pilot=get_uint16(&data[10]);
-            //     lastbyte=(int) data[12];
-            //     tzx_pause=get_uint16(&data[13]);
-            //     tzx_current_datablock_size=get_uint24(&data[15]);
-            //     data+=18;
-            //     if (info==1)
-            //     {
-            //         Identify(tzx_current_datablock_size,data,1);
-            //         sprintf(pstr,"Block %3d (%5X):  11 - Custom Loading Data - %s\n",curr+1,block[curr]+10,tstr); writeout(pstr);
-            //         sprintf(tstr,"                Length: %5d bytes\n",tzx_current_datablock_size); writeout(tstr);
-            //         sprintf(tstr,"                  Flag: %5d ($%02X)\n",data[0],data[0]); writeout(tstr);
-            //         if (!cpc)
-            //         {
-            //             sprintf(tstr,"              CheckSum: %5d ($%02X) - %s\n",data[tzx_current_datablock_size-1],data[tzx_current_datablock_size-1],GetCheckSum(data,tzx_current_datablock_size)); writeout(tstr);
-            //         }
-            //         sprintf(tstr,"           Pilot pulse: %5d T-States\n",get_uint16(data-18)); writeout(tstr);
-            //         sprintf(tstr,"          Pilot length: %5d pulses\n",pilot); writeout(tstr);
-            //         sprintf(tstr,"      Sync first pulse: %5d T-States\n",get_uint16(data-16)); writeout(tstr);
-            //         sprintf(tstr,"     Sync second pulse: %5d T-States\n",get_uint16(data-14)); writeout(tstr);
-            //         sprintf(tstr,"           Bit-0 pulse: %5d T-States\n",get_uint16(data-12)); writeout(tstr);
-            //         sprintf(tstr,"           Bit-1 pulse: %5d T-States\n",get_uint16(data-10)); writeout(tstr);
-            //         sprintf(tstr,"        Last byte used: %5d bits\n",lastbyte); writeout(tstr);
-            //         sprintf(tstr,"     Pause after block: %5d milliseconds\n\n",tzx_pause); line++; writeout(tstr);
-            //     }
-            //     break;
+	printf("          TOTAL BLOCKS: %d\n", tzx_blockcount);
+	if (unrecognised_block)
+	{
+		printf("        UNKNOWN BLOCKS: %d\n", unrecognised_block);
+	}
+
+	//************************************************************************************************//
+	//
+	// SET THE START AND END BLOCKS
+	//
+	//************************************************************************************************//
+	uint8_t tzx_current_block_type = 0;
+	uint8_t *tzx_current_data;
+
+	tzx_current_block = 0;
+	if (tzx_starting_block > 1)
+	{
+		if (tzx_starting_block > tzx_blockcount)
+		{
+			char blocks[5];
+			sprintf(blocks, "%d", tzx_starting_block);
+			shutdown(ERR_INVALID_STARTING_BLOCK, blocks);
+		}
+
+		tzx_current_block = tzx_starting_block - 1;
+	}
+
+	if (tzx_ending_block > 0)
+	{
+		if (tzx_ending_block > tzx_blockcount || tzx_ending_block < tzx_starting_block)
+		{
+			char blocks[5];
+			sprintf(blocks, "%d", tzx_ending_block);
+			shutdown(ERR_INVALID_ENDING_BLOCK, blocks);
+		}
+		tzx_blockcount = tzx_ending_block;
+	}
+
+	printf("             CPU SPEED: %1.1fMhz\n\n", (float)cpufreq / 1000000);
+
+	//************************************************************************************************//
+	//
+	// SETTING UP SOUND CARD
+	//
+	//************************************************************************************************//
+	if ((err = snd_pcm_open(&alsa_handle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0)
+	{
+		shutdown(EXIT_NO_SOUNDCARD, snd_strerror(err));
+	}
+
+	if ((err = snd_pcm_set_params(alsa_handle,
+				      SND_PCM_FORMAT_U8,
+				      SND_PCM_ACCESS_RW_INTERLEAVED,
+				      1,
+				      samplefreq,
+				      1,
+				      500000)) < 0)
+	{ /* 0.5sec */
+		shutdown(EXIT_PARAMS_SOUNDCARD, snd_strerror(err));
+	}
+
+	//************************************************************************************************//
+	//
+	// SEND DATA TO SOUND CARD
+	//
+	//************************************************************************************************//
+	int tzx_pause;			    // Duration of silence in "Half Pulses"
+	int tzx_current_datablock_size;	    //  This datablock, size
+	int tzx_current_datablock_position; //  This datablock, current position
+	int tzx_pilot;			    // Size of pilot signal in "Half Pulses"
+	int tzx_audio_pilot;		    // Actual Pilot Pulse
+	int tzx_audio_sync1;		    // Sync first half-period (hp)
+	int tzx_audio_sync2;		    // Sync second
+	int tzx_audio_bit0;		    // Bit-0
+	int tzx_audio_bit1;		    // Bit-1
+	int tzx_audio_bit;		    // Current audio bit
+	int tzx_audio_pulse;		    // Pulse in Sequence of pulses and direct recording block
+	int tzx_speed;			    // Audio datarate (not related to CPU speed)
+	uint8_t tzx_this_byte;		    // Current Byte to be replayed of the data */
+	uint8_t tzx_bits_in_this_byte;	    // How many bits of data we are processing this time.
+	uint8_t tzx_bits_in_last_byte;	    // Number of bits in the last byte of data
+
+	// Start replay of blocks ...
+	while (tzx_current_block < tzx_blockcount)
+	{
+		tzx_current_block_type = tzx_data[tzx_block_offsets[tzx_current_block]];
+		tzx_current_data = &tzx_data[tzx_block_offsets[tzx_current_block] + 1];
+
+		switch (tzx_current_block_type)
+		{
+		// Standard Loading Data block
+		case TXZ_ID10_STANDARD:
+			tzx_pause = get_uint16(&tzx_current_data[0]);
+			tzx_current_datablock_size = get_uint16(&tzx_current_data[2]);
+			tzx_current_data += 4;
+			if (tzx_current_data[0] == 0x00)
+			{
+				tzx_pilot = 8064;
+			}
+			else
+			{
+				tzx_pilot = 3220;
+			}
+			tzx_audio_pilot = tzx_ticks_to_samples(2168);
+			tzx_audio_sync1 = tzx_ticks_to_samples(667);
+			tzx_audio_sync2 = tzx_ticks_to_samples(735);
+			tzx_audio_bit0 = tzx_ticks_to_samples(885);
+			tzx_audio_bit1 = tzx_ticks_to_samples(1710);
+			tzx_bits_in_last_byte = 8;
+			if (DEBUG)
+			{
+				// tzx_get_block_type(tzx_current_datablock_size,tzx_current_data,1);
+				printf("Block ID %3d (start: %5X, len: %5X):  10 - Standard Loading Data\n",
+				       tzx_current_block + 1,
+				       tzx_block_offsets[tzx_current_block] + 10);
+				printf("      %s\n",
+				       tzx_get_block_type(tzx_current_datablock_size, tzx_current_data, 1));
+
+				printf("                Length: %6d bytes\n", tzx_current_datablock_size);
+				printf("                  Flag: %6d ($%02X)\n", tzx_current_data[0],
+				       tzx_current_data[0]);
+				printf("              CheckSum: %6d ($%02X) - ",
+				       tzx_current_data[tzx_current_datablock_size - 1],
+				       tzx_current_data[tzx_current_datablock_size - 1]);
+				tzx_display_checksum(tzx_current_data, tzx_current_datablock_size);
+				printf("\n");
+				printf("     Pause after block: %6d milliseconds\n", tzx_pause);
+			}
+			printf("\n");
+			break;
+
+		// Custom Loading Data block
+		case TXZ_ID11_TURBO:
+			tzx_audio_pilot = tzx_ticks_to_samples(get_uint16(&tzx_current_data[0]));
+			tzx_audio_sync1 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[2]));
+			tzx_audio_sync2 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[4]));
+			tzx_audio_bit0 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[6]));
+			tzx_audio_bit1 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[8]));
+			tzx_speed = (int)((1710.0 / (double)get_uint16(&tzx_current_data[8])) * 100.0);
+			tzx_pilot = get_uint16(&tzx_current_data[10]);
+			tzx_bits_in_last_byte = (int)tzx_current_data[12];
+			tzx_pause = get_uint16(&tzx_current_data[13]);
+			tzx_current_datablock_size = get_uint24(&tzx_current_data[15]);
+			tzx_current_data += 18;
+			if (DEBUG)
+			{
+				printf("Block %3d (%5X):  11 - Custom Loading Data\n", tzx_current_block + 1,
+				       tzx_block_offsets[tzx_current_block] + 10);
+				printf("      %s\n",
+				       tzx_get_block_type(tzx_current_datablock_size, tzx_current_data, 1));
+
+				printf("                Length: %6d bytes\n", tzx_current_datablock_size);
+				printf("                  Flag: %6d ($%02X)\n", tzx_current_data[0],
+				       tzx_current_data[0]);
+				// if (!cpc)
+				// {
+				printf("              CheckSum: %6d ($%02X) - ",
+				       tzx_current_data[tzx_current_datablock_size - 1],
+				       tzx_current_data[tzx_current_datablock_size - 1]);
+				// }
+				printf("           Pilot pulse: %6d T-States\n", get_uint16(tzx_current_data - 18));
+				printf("          Pilot length: %6d pulses\n", tzx_pilot);
+				printf("      Sync first pulse: %6d T-States\n", get_uint16(tzx_current_data - 16));
+				printf("     Sync second pulse: %6d T-States\n", get_uint16(tzx_current_data - 14));
+				printf("           Bit-0 pulse: %6d T-States\n", get_uint16(tzx_current_data - 12));
+				printf("           Bit-1 pulse: %6d T-States\n", get_uint16(tzx_current_data - 10));
+				printf("        Last byte used: %6d bits\n", tzx_current_data);
+				printf("     Pause after block: %6d milliseconds\n\n", tzx_pause);
+			}
+			break;
+			/*
             // // Pure Tone
             // case 0x12:
             //     sb_pilot=tzx_ticks_to_samples(get_uint16(&data[0]));
@@ -626,55 +647,31 @@ int main(int argc, char *argv[])
             //             sprintf(tstr,"     Pause after block: %5d milliseconds\n\n",tzx_pause); line++; writeout(tstr);
             //         }
             //         break;
-                // Pause or Stop the Tape command
-                case 0x20:
-                    tzx_pause=get_uint16(&data[0]);
-                    amp=LOAMP;
-                    if (tzx_pause)
-                        {
-                        if (info!=1)
-                            {
-                            if (draw) printf("    Pause                 Length: %2.3fs\n",((float) tzx_pause)/1000.0);
-                            if (info!=2) { tzx_pause_audio(amp,tzx_pause); amp=LOAMP; }
-                            }
-                        else
-                            {
-                            sprintf(tstr,"Block %3d (%5X):  20 - Pause (Silence)\n",curr+1,block[curr]+10); writeout(tstr);
-                            sprintf(tstr,"              Duration: %5d milliseconds\n\n",tzx_pause); line++; writeout(tstr);
-                            }
-                        }
-                    else
-                        {
-                        if (info!=1)
-                            {
-                            if (!voc)
-                                {
-                                if (info!=2)
-                                    {
-                                    if (draw) printf("    Stop the tape command - Press any key to continue!\n");
-                                    tzx_play_audio(amp,sbbuflen<<1);            // finish last block ...
-                                    StopSB();
-                                    while (!kbhit()) {} k=GetCh();
-                                    if (k==27)
-                                        {
-                                        free(mem);
-                                        close(fh);
-                                        error("ESCAPE key pressed!");
-                                        }
-                                    InitSB();
-                                    }
-                                else
-                                    { if (draw) printf("    Stop the tape command!\n"); }
-                                }
-                            else
-                                {
-                                if (draw) printf("    Stop the tape command!\n");
-                                if (info!=2) { tzx_pause_audio(amp, 5000); amp=LOAMP; }
-                                }
-                            }
-                        else { sprintf(tstr,"Block %3d (%5X):  20 - Stop the Tape Command\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
-                        }
-                    break;
+	    */
+		// Pause or Stop the Tape command
+		case 0x20:
+			tzx_pause = get_uint16(&tzx_current_data[0]);
+			tzx_amp = LOAMP;
+			if (tzx_pause)
+			{
+				printf( "Block %3d (%5X):  20 - Pause (Silence)\n", tzx_current_block + 1,
+					tzx_current_data[tzx_current_block] + 10);
+				printf(  "              Duration: %6d milliseconds\n\n", tzx_pause);
+			}
+			else
+			{
+				printf( "Block %3d (%5X):  20 - Stop the Tape Command\n\n", tzx_current_block + 1,
+					tzx_current_data[tzx_current_block] + 10);
+
+				tzx_finish_audio();
+
+				if(!tzx_silent) {
+					printf(" HIT A KEY - THIS SHOULD BE GPIO\n");
+					getchar();
+				}
+			}
+			break;
+	/*
             //     // Group Start
             //     case 0x21:
             //         CopyString(pstr,&data[1],data[0]);
@@ -880,18 +877,19 @@ int main(int argc, char *argv[])
             //             }
             //         break;
             */
-                // Description
-                case 0x30:
-                    printf("Block ID %3d (start: %5X, len: %5X):  30 - Description: ", 
-                        tzx_current_block + 1, 
-                        tzx_block_offsets[tzx_current_block] + 10, 
-                        tzx_current_data[0]); 
-                    for(uint8_t description_char = 0; description_char < tzx_current_data[0]; description_char++) {
-                        printf("%c", tzx_current_data[description_char+1]);
-                    }
-                    printf("\n\n"); 
-                    break;
-                /*
+		// Description
+		case 0x30:
+			printf("Block ID %3d (start: %5X, len: %5X):  30 - Description\n                  Text: ",
+			       tzx_current_block + 1,
+			       tzx_block_offsets[tzx_current_block] + 10,
+			       tzx_current_data[0]);
+			for (uint8_t description_char = 0; description_char < tzx_current_data[0]; description_char++)
+			{
+				printf("%c", tzx_current_data[description_char + 1]);
+			}
+			printf("\n");
+			break;
+			/*
             //     // Message
             //     case 0x31:  CopyString(pstr,&data[2],data[1]);
             //         if (info!=1) { if (draw) printf("    Message: %s\n",pstr); }    // Pause in Message block is ignored ...
@@ -1098,108 +1096,109 @@ int main(int argc, char *argv[])
             //         else    {   sprintf(tstr,"Block %3d (%5X):  5A - Merget Tapes\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
             //         break;
             */
-                    // Other (unknown) blocks
-                    default:
-                        printf("Block ID %3d (start: %5X):  %02X Unknown Block \n\n",
-                            tzx_current_block + 1,
-                            tzx_current_data[tzx_data_current_position] + 10,
-                            tzx_current_block_type);
-                        break;
-        }
-        tzx_current_block_type++;
+		// Other (unknown) blocks
+		default:
+			printf("Block ID %3d (start: %5X):  %02X Unknown Block \n\n",
+			       tzx_current_block + 1,
+			       tzx_current_data[tzx_data_current_position] + 10,
+			       tzx_current_block_type);
+			break;
+		}
 
-        if (tzx_current_block_type==0x10 
-            || tzx_current_block_type==0x11 
-            || tzx_current_block_type==0x14)    // One of the data blocks ...
-        {
-            if (tzx_current_block_type != 0x14){
-                printf("  Length:%6d  ",tzx_current_datablock_size);
-                // Identify(tzx_current_datablock_size,data,0);
-            }
-            else
-            {
-                printf("    Pure Data           ");
-            }
-            if (tzx_current_block_type==0x10)
-            {
-                   printf("Normal Speed");
-            }
-            else
-            {
-                      printf(" Speed: %3d%%", tzx_speed);
-            }
-            if (tzx_current_block==tzx_blockcount-1)
-            {
-                printf("\n");
-            }
-            else
-            {
-                printf(",Pause: %2.3fs",((float) tzx_pause)/1000.0);
-            }
+		if (tzx_current_block_type == TXZ_ID10_STANDARD || tzx_current_block_type == TXZ_ID11_TURBO || tzx_current_block_type == 0x14) // One of the data blocks ...
+		{
+			if (tzx_current_block_type != 0x14)
+			{
+				printf("                Length: %6d\n", tzx_current_datablock_size);
+				// Identify(tzx_current_datablock_size,data,0);
+			}
+			else
+			{
+				printf("    Pure Data           ");
+			}
 
-            while (tzx_pilot)
-            {
-                tzx_play_audio(tzx_amp,tzx_audio_pilot);
-                tzx_toggle_amplitude();
-                tzx_pilot--;
-            }   // Play PILOT TONE
-            if (tzx_audio_sync1)
-            {
-                tzx_play_audio(tzx_amp,tzx_audio_sync1);
-                tzx_toggle_amplitude();
-            }  // Play SYNC PULSES
-            if (tzx_audio_sync2)
-            {
-                tzx_play_audio(tzx_amp,tzx_audio_sync2);
-                tzx_toggle_amplitude();
-            }
-            
-            tzx_current_datablock_position=0;
-            while (tzx_current_datablock_size)                                                 // Play actual DATA
-            {
-                if (tzx_current_datablock_size!=1)
-                {
-                    tzx_bits_in_this_byte=8;
-                }
-                else
-                {
-                    tzx_bits_in_this_byte=tzx_bits_in_last_byte;
-                }
-                tzx_this_byte=tzx_current_data[tzx_current_datablock_position];
-                while (tzx_bits_in_this_byte)
-                {
-                    if (tzx_this_byte&0x80) 
-                    {
-                        tzx_audio_bit=tzx_audio_bit1;
-                    }
-                    else
-                    {
-                        tzx_audio_bit=tzx_audio_bit0;
-                    }
-                    tzx_play_audio(tzx_amp,tzx_audio_bit);
-                    tzx_toggle_amplitude();
-                    tzx_play_audio(tzx_amp,tzx_audio_bit);
-                    tzx_toggle_amplitude();
-                    tzx_this_byte<<=1;
-                    tzx_bits_in_this_byte--;
-                }
-                tzx_current_datablock_size--; tzx_current_datablock_position++;
-            }
-            // If there is pause after block present then make first millisecond the oposite
-            // pulse of last pulse played and the rest in LOAMP ... otherwise don't do ANY pause
-            if (tzx_pause)
-            {
-                tzx_pause_audio(tzx_amp,1);
-                tzx_amp=LOAMP;
-                if (tzx_pause>1) {
-                    tzx_pause_audio(tzx_amp,tzx_pause-1);
-                }
-            }
-        }
+			if (tzx_current_block_type == TXZ_ID10_STANDARD)
+			{
+				printf("Normal Speed");
+			}
+			else
+			{
+				printf(" Speed: %3d%%", tzx_speed);
+			}
+			if (tzx_current_block == tzx_blockcount - 1)
+			{
+				printf("\n");
+			}
+			else
+			{
+				printf(",Pause: %2.3fs", ((float)tzx_pause) / 1000.0);
+			}
 
-        if (tzx_current_block_type==0x16)    // C64 ROM data block ...
-        {
-/*
+			while (tzx_pilot)
+			{
+				tzx_play_audio(tzx_amp, tzx_audio_pilot);
+				tzx_toggle_amplitude();
+				tzx_pilot--;
+			} // Play PILOT TONE
+			if (tzx_audio_sync1)
+			{
+				tzx_play_audio(tzx_amp, tzx_audio_sync1);
+				tzx_toggle_amplitude();
+			} // Play SYNC PULSES
+			if (tzx_audio_sync2)
+			{
+				tzx_play_audio(tzx_amp, tzx_audio_sync2);
+				tzx_toggle_amplitude();
+			}
+
+			tzx_current_datablock_position = 0;
+			while (tzx_current_datablock_size) // Play actual DATA
+			{
+				if (tzx_current_datablock_size != 1)
+				{
+					tzx_bits_in_this_byte = 8;
+				}
+				else
+				{
+					tzx_bits_in_this_byte = tzx_bits_in_last_byte;
+				}
+				tzx_this_byte = tzx_current_data[tzx_current_datablock_position];
+				while (tzx_bits_in_this_byte)
+				{
+					if (tzx_this_byte & 0x80)
+					{
+						tzx_audio_bit = tzx_audio_bit1;
+					}
+					else
+					{
+						tzx_audio_bit = tzx_audio_bit0;
+					}
+					tzx_play_audio(tzx_amp, tzx_audio_bit);
+					tzx_toggle_amplitude();
+					tzx_play_audio(tzx_amp, tzx_audio_bit);
+					tzx_toggle_amplitude();
+					tzx_this_byte <<= 1;
+					tzx_bits_in_this_byte--;
+				}
+				tzx_current_datablock_size--;
+				tzx_current_datablock_position++;
+			}
+			// If there is pause after block present then make first millisecond the oposite
+			// pulse of last pulse played and the rest in LOAMP ... otherwise don't do ANY pause
+			if (tzx_pause)
+			{
+				tzx_pause_audio(tzx_amp, 1);
+				tzx_amp = LOAMP;
+				if (tzx_pause > 1)
+				{
+					tzx_pause_audio(tzx_amp, tzx_pause - 1);
+				}
+			}
+		}
+
+		if (tzx_current_block_type == 0x16) // C64 ROM data block ...
+		{
+			/*
             IdentifyC64ROM(tzx_current_datablock_size, data, 0);
             if (curr==numblocks-1)  sprintf(pstr,"\0");
             else                    sprintf(pstr,",Pause: %2.3fs",((float) pause)/1000.0);
@@ -1251,11 +1250,11 @@ int main(int argc, char *argv[])
                 }
             }
 */
-        }
+		}
 
-        if (tzx_current_block_type==0x17)    // C64 Turbo Tape data block ...
-        {
-/*
+		if (tzx_current_block_type == 0x17) // C64 Turbo Tape data block ...
+		{
+			/*
             IdentifyC64Turbo(tzx_current_datablock_size, data, 0);
             if (curr==numblocks-1)  sprintf(pstr,"\0");
             else                    sprintf(pstr,",Pause: %2.3fs",((float) tzx_pause)/1000.0);
@@ -1299,29 +1298,26 @@ int main(int argc, char *argv[])
                 }
             }
     */
-        }
-        tzx_current_block++;
-        printf("\n\n");
-    }
+		}
+		tzx_current_block++;
+		printf("\n\n");
+	}
 
+	// SINE WAVE
+	// printf("Sine tone at %dHz \n", sinefreq);
 
+	// for (i = 0; i < BUFFER_LEN; i++)
+	// {
+	//     buffer[active_buffer][i] = (sin(((2 * M_PI * sinefreq) / samplefreq) * i))*255;
+	// }
 
+	// frames = snd_pcm_writei(alsa_handle, buffer[0], BUFFER_LEN);  //sending values to sound driver
 
-    // SINE WAVE
-    // printf("Sine tone at %dHz \n", sinefreq);
-
-    // for (i = 0; i < BUFFER_LEN; i++)
-    // {
-    //     buffer[active_buffer][i] = (sin(((2 * M_PI * sinefreq) / samplefreq) * i))*255;
-    // }
-
-    // frames = snd_pcm_writei(alsa_handle, buffer[0], BUFFER_LEN);  //sending values to sound driver
-
-    err = snd_pcm_drain(alsa_handle);
-    if (err < 0)
-    {
-        printf("snd_pcm_drain failed: %s\n", snd_strerror(err));
-    }
-    snd_pcm_close(alsa_handle);
-    return 0;
+	err = snd_pcm_drain(alsa_handle);
+	if (err < 0)
+	{
+		printf("snd_pcm_drain failed: %s\n", snd_strerror(err));
+	}
+	snd_pcm_close(alsa_handle);
+	return 0;
 }

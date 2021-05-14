@@ -40,7 +40,7 @@ extern const char TAPTapeHeaderID[];
 #define PAUSELENGTH           1000
 
 
-#define BUFFER_LEN 448000
+#define BUFFER_LEN 44800
 
 //************************************************************************************************//
 // 
@@ -48,6 +48,7 @@ extern const char TAPTapeHeaderID[];
 // 
 //************************************************************************************************//
 extern bool DEBUG;
+extern bool VERBOSE;
 extern int samplefreq;         //soundcard audio sample frequency
 
 extern snd_output_t *output;            // snd output
