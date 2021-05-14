@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
 				       tzx_current_data[0]);
 				// if (!cpc)
 				// {
-				printf("              CheckSum: %6d ($%02X) - ",
+				printf("              CheckSum: %6d ($%02X)\n",
 				       tzx_current_data[tzx_current_datablock_size - 1],
 				       tzx_current_data[tzx_current_datablock_size - 1]);
 				// }
@@ -419,7 +419,8 @@ int main(int argc, char *argv[])
 				printf("     Pause after block: %6d milliseconds\n\n", tzx_pause);
 			}
 			break;
-			/*
+
+	/*
             // // Pure Tone
             // case 0x12:
             //     sb_pilot=tzx_ticks_to_samples(get_uint16(&data[0]));
