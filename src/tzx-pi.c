@@ -13,6 +13,7 @@
 #include "tzx_play_audio.h"
 #include "tzx_pause_audio.h"
 #include "tzx_finish_audio.h"
+#include "tzx_print_string.h"
 
 static char *device = "default"; /* playback device */
 snd_output_t *output = NULL;
@@ -161,16 +162,16 @@ int main(int argc, char *argv[])
 
 		switch (tzx_data[tzx_data_current_position - 1])
 		{
-		case TXZ_ID10_STANDARD:
+		case TZX_ID10_STANDARD:
 			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x02]) + 0x04;
 			break;
-		case TXZ_ID11_TURBO:
+		case TZX_ID11_TURBO:
 			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x0F]) + 0x12;
 			break;
-		case 0x12:
+		case TZX_ID12_TONE:
 			tzx_data_current_position += 0x04;
 			break;
-		case 0x13:
+		case TZX_ID13_PULSES:
 			tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x02) + 0x01;
 			break;
 		case 0x14:
@@ -185,14 +186,13 @@ int main(int argc, char *argv[])
 		case 0x17:
 			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
 			break;
-
-		case 0x20:
+		case TZX_ID20_PAUSE:
 			tzx_data_current_position += 0x02;
 			break;
-		case 0x21:
+		case TZX_ID21_GROUP_START:
 			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
 			break;
-		case 0x22:
+		case TZX_ID22_GROUP_END:
 			break;
 		case 0x23:
 			tzx_data_current_position += 0x02;
@@ -214,10 +214,11 @@ int main(int argc, char *argv[])
 		case 0x2A:
 			tzx_data_current_position += 0x04;
 			break;
-
-		case 0x30:
+			
+		case TZX_ID30_DESCRIPTION:
 			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
 			break;
+/*
 		case 0x31:
 			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x01] + 0x02;
 			break;
@@ -241,7 +242,7 @@ int main(int argc, char *argv[])
 		case 0x5A:
 			tzx_data_current_position += 0x09;
 			break;
-
+*/
 		default:
 			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
 			unrecognised_block++;
@@ -315,21 +316,22 @@ int main(int argc, char *argv[])
 	// SEND DATA TO SOUND CARD
 	//
 	//************************************************************************************************//
-	int tzx_pause;			    // Duration of silence in "Half Pulses"
-	int tzx_current_datablock_size;	    //  This datablock, size
-	int tzx_current_datablock_position; //  This datablock, current position
-	int tzx_pilot;			    // Size of pilot signal in "Half Pulses"
-	int tzx_audio_pilot;		    // Actual Pilot Pulse
-	int tzx_audio_sync1;		    // Sync first half-period (hp)
-	int tzx_audio_sync2;		    // Sync second
-	int tzx_audio_bit0;		    // Bit-0
-	int tzx_audio_bit1;		    // Bit-1
-	int tzx_audio_bit;		    // Current audio bit
-	int tzx_audio_pulse;		    // Pulse in Sequence of pulses and direct recording block
-	int tzx_speed;			    // Audio datarate (not related to CPU speed)
-	uint8_t tzx_this_byte;		    // Current Byte to be replayed of the data */
-	uint8_t tzx_bits_in_this_byte;	    // How many bits of data we are processing this time.
-	uint8_t tzx_bits_in_last_byte;	    // Number of bits in the last byte of data
+	int tzx_pause;				// Duration of silence in "Half Pulses"
+	int tzx_current_datablock_size;		//  This datablock, size
+	int tzx_current_datablock_position;	//  This datablock, current position
+	int tzx_pilot;				// Size of pilot signal in "Half Pulses"
+	int tzx_audio_pilot;			// Actual Pilot Pulse
+	int tzx_audio_sync1;			// Sync first half-period (hp)
+	int tzx_audio_sync2;			// Sync second
+	int tzx_audio_bit0;			// Bit-0
+	int tzx_audio_bit1;			// Bit-1
+	int tzx_audio_bit;			// Current audio bit
+	int tzx_audio_pulse;			// Pulse in Sequence of pulses and direct recording block
+	int tzx_speed;				// Audio datarate (not related to CPU speed)
+	uint8_t tzx_this_byte;			// Current Byte to be replayed of the data */
+	uint8_t tzx_bits_in_this_byte;		// How many bits of data we are processing this time.
+	uint8_t tzx_bits_in_last_byte;		// Number of bits in the last byte of data
+	uint8_t tzx_block_parts;		// Number of times an block repeats, etc.
 
 	// Start replay of blocks ...
 	while (tzx_current_block < tzx_blockcount)
@@ -340,7 +342,7 @@ int main(int argc, char *argv[])
 		switch (tzx_current_block_type)
 		{
 		// Standard Loading Data block
-		case TXZ_ID10_STANDARD:
+		case TZX_ID10_STANDARD:
 			tzx_pause = get_uint16(&tzx_current_data[0]);
 			tzx_current_datablock_size = get_uint16(&tzx_current_data[2]);
 			tzx_current_data += 4;
@@ -361,18 +363,18 @@ int main(int argc, char *argv[])
 			if (DEBUG)
 			{
 				// tzx_get_block_type(tzx_current_datablock_size,tzx_current_data,1);
-				printf("Block ID %3d (start: %5X, len: %5X):  10 - Standard Loading Data\n",
-				       tzx_current_block + 1,
-				       tzx_block_offsets[tzx_current_block] + 10);
+				printf("    Block ID %3d (start: %5X, len: %5X):  10 - Standard Loading Data\n",
+					tzx_current_block + 1,
+					tzx_block_offsets[tzx_current_block] + 10);
 				printf("      %s\n",
-				       tzx_get_block_type(tzx_current_datablock_size, tzx_current_data, 1));
+					tzx_get_block_type(tzx_current_datablock_size, tzx_current_data, 1));
 
 				printf("                Length: %6d bytes\n", tzx_current_datablock_size);
 				printf("                  Flag: %6d ($%02X)\n", tzx_current_data[0],
-				       tzx_current_data[0]);
+					tzx_current_data[0]);
 				printf("              CheckSum: %6d ($%02X) - ",
-				       tzx_current_data[tzx_current_datablock_size - 1],
-				       tzx_current_data[tzx_current_datablock_size - 1]);
+					tzx_current_data[tzx_current_datablock_size - 1],
+					tzx_current_data[tzx_current_datablock_size - 1]);
 				tzx_display_checksum(tzx_current_data, tzx_current_datablock_size);
 				printf("\n");
 				printf("     Pause after block: %6d milliseconds\n", tzx_pause);
@@ -381,7 +383,7 @@ int main(int argc, char *argv[])
 			break;
 
 		// Custom Loading Data block
-		case TXZ_ID11_TURBO:
+		case TZX_ID11_TURBO:
 			tzx_audio_pilot = tzx_ticks_to_samples(get_uint16(&tzx_current_data[0]));
 			tzx_audio_sync1 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[2]));
 			tzx_audio_sync2 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[4]));
@@ -395,7 +397,7 @@ int main(int argc, char *argv[])
 			tzx_current_data += 18;
 			if (DEBUG)
 			{
-				printf("Block %3d (%5X):  11 - Custom Loading Data\n", tzx_current_block + 1,
+				printf("    Block %3d (%5X):  11 - Custom Loading Data\n", tzx_current_block + 1,
 				       tzx_block_offsets[tzx_current_block] + 10);
 				printf("      %s\n",
 				       tzx_get_block_type(tzx_current_datablock_size, tzx_current_data, 1));
@@ -405,7 +407,7 @@ int main(int argc, char *argv[])
 				       tzx_current_data[0]);
 				// if (!cpc)
 				// {
-				printf("              CheckSum: %6d ($%02X)\n",
+				printf("              CheckSum: %6d ($%02X) - ",
 				       tzx_current_data[tzx_current_datablock_size - 1],
 				       tzx_current_data[tzx_current_datablock_size - 1]);
 				// }
@@ -420,55 +422,48 @@ int main(int argc, char *argv[])
 			}
 			break;
 
-	/*
-            // // Pure Tone
-            // case 0x12:
-            //     sb_pilot=tzx_ticks_to_samples(get_uint16(&data[0]));
-            //     pilot=get_uint16(&data[2]);
-            //     if (info!=1)
-            //     {
-            //         if (draw) {
-            //             printf("    Pure Tone             Length: %5d\n",pilot);
-            //         }
-            //         if (info!=2)
-            //         {
-            //             while (pilot) {
-            //                 tzx_play_audio(amp,sb_pilot); tzx_toggle_amplitude(); pilot--;
-            //             }
-            //         }
-            //     }
-            //     else
-            //     {
-            //         sprintf(tstr,"Block %3d (%5X):  12 - Pure Tone\n",curr+1,block[curr]+10); writeout(tstr);
-            //         sprintf(tstr,"          Pulse length: %5d T-States\n",get_uint16(data)); writeout(tstr);
-            //         sprintf(tstr,"           Tone length: %5d pulses\n\n",pilot); line++; writeout(tstr);
-            //     }
-            //     break;
-            // // Sequence of Pulses
-            // case 0x13:  
-            //     pilot=(int) data[0];
-            //     data++;
-            //     if (info!=1)
-            //     {
-            //         if (draw) 
-            //         {
-            //             printf("    Sequence of Pulses    Length: %5d\n",pilot);
-            //         }
-            //         if (info!=2)
-            //         {
-            //             while(pilot)
-            //             {
-            //                 sb_pulse=tzx_ticks_to_samples(get_uint16(&data[0]));
-            //                 tzx_play_audio(amp,sb_pulse); tzx_toggle_amplitude(); pilot--; data+=2;
-            //             }
-            //         }
-            //     }
-            //     else
-            //     {
-            //         sprintf(tstr,"Block %3d (%5X):  13 - Sequence of Pulses\n",curr+1,block[curr]+10); writeout(tstr);
-            //         sprintf(tstr,"      Number of Pulses: %5d\n\n",pilot); line++; writeout(tstr);
-            //     }
-            //     break;
+		// Pure Tone
+		case TZX_ID12_TONE:
+			tzx_audio_pilot = tzx_ticks_to_samples(get_uint16(&tzx_current_data[0]));
+			tzx_pilot = get_uint16(&tzx_current_data[2]);
+
+			if (DEBUG)
+			{
+				printf("    Block %3d (%5X):  12 - Pure Tone\n", tzx_current_block + 1,
+					tzx_block_offsets[tzx_current_block] + 10);
+				printf("          Pulse length: %5d T-States\n", get_uint16(tzx_current_data));
+				printf("           Tone length: %5d pulses\n\n", tzx_pilot);
+			}
+			while (tzx_pilot) {
+				tzx_play_audio(tzx_amp, tzx_audio_pilot);
+				tzx_toggle_amplitude();
+				tzx_pilot--;
+			}
+			break;
+		// Sequence of Pulses
+		case TZX_ID13_PULSES:
+			tzx_pilot = (int)tzx_current_data[0];
+			tzx_current_data++;
+			if (DEBUG)
+			{
+				printf("    Block %3d (%5X):  13 - Sequence of Pulses\n", tzx_current_block + 1,
+				       tzx_block_offsets[tzx_current_block] + 10);
+				printf("      Number of Pulses: %5d\n\n", tzx_pilot);
+			}
+			while (tzx_pilot) {
+				tzx_audio_pulse = tzx_ticks_to_samples(get_uint16(&tzx_current_data[0]));
+				tzx_play_audio(tzx_amp, tzx_audio_pulse);
+				tzx_toggle_amplitude();
+				tzx_pilot--;
+
+				tzx_play_audio(tzx_amp, tzx_audio_pilot);
+				tzx_toggle_amplitude();
+				tzx_pilot--;
+				tzx_current_data += 2;
+			}
+			break;
+
+			/*
             // // Pure Data
             // case 0x14:
             //     sb_pilot=pilot=sb_sync1=sb_sync2=0;
@@ -649,8 +644,9 @@ int main(int argc, char *argv[])
             //         }
             //         break;
 	    */
+
 		// Pause or Stop the Tape command
-		case 0x20:
+		case TZX_ID20_PAUSE:
 			tzx_pause = get_uint16(&tzx_current_data[0]);
 			tzx_amp = LOAMP;
 			if (tzx_pause)
@@ -672,20 +668,22 @@ int main(int argc, char *argv[])
 				}
 			}
 			break;
-	/*
-            //     // Group Start
-            //     case 0x21:
-            //         CopyString(pstr,&data[1],data[0]);
-            //         if (info!=1) { if (draw) printf("    Group: %s\n",pstr); }
-            //         else    {   sprintf(tstr,"Block %3d (%5X):  21 - Group: %s\n\n",curr+1,block[curr]+10, pstr); line++; writeout(tstr); }
-            //         if (!expand) draw=0;
-            //         break;
-            //     // Group End
-            //     case 0x22:  if (info!=1) { if (draw) printf("    Group End\n"); }
-            //         else    {   sprintf(tstr,"Block %3d (%5X):  22 - Group End\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
-            //         draw=1;
-            //         break;
-            //     // Jump To Relative
+			
+		// Group Start
+		case TZX_ID21_GROUP_START:
+			printf("    Block %3d (%5X):  21 - Group Start\n", tzx_current_block + 1,
+				tzx_block_offsets[tzx_current_block] + 10);
+			tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
+			break;
+			
+		// Group End
+		case TZX_ID22_GROUP_END:
+			printf("    Block %3d (%5X):  22 - Group End\n", tzx_current_block + 1,
+				tzx_block_offsets[tzx_current_block] + 10);
+			tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
+			break;
+/*
+            // Jump To Relative
             //     case 0x23:  jump=(signed short) (data[0]+data[1]*256);
             //         if (info!=1)
             //             {
@@ -839,7 +837,7 @@ int main(int argc, char *argv[])
             //                 }
             //             }
             //         break;
-            //     // Stop the tape if in 48k mode
+            // Stop the tape if in 48k mode
             //     case 0x2A:  if (info==1)
             //             {
             //             sprintf(tstr,"Block %3d (%5X):  2A - Stop the tape if in 48k mode\n\n",curr+1,block[curr]+10); line++; writeout(tstr);
@@ -879,224 +877,223 @@ int main(int argc, char *argv[])
             //         break;
             */
 		// Description
-		case 0x30:
+		case TZX_ID30_DESCRIPTION:
 			printf("Block ID %3d (start: %5X, len: %5X):  30 - Description\n                  Text: ",
-			       tzx_current_block + 1,
-			       tzx_block_offsets[tzx_current_block] + 10,
-			       tzx_current_data[0]);
-			for (uint8_t description_char = 0; description_char < tzx_current_data[0]; description_char++)
-			{
-				printf("%c", tzx_current_data[description_char + 1]);
-			}
+				tzx_current_block + 1,
+				tzx_block_offsets[tzx_current_block] + 10,
+				tzx_current_data[0]);
+
+			tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
 			printf("\n");
 			break;
-			/*
-            //     // Message
-            //     case 0x31:  CopyString(pstr,&data[2],data[1]);
-            //         if (info!=1) { if (draw) printf("    Message: %s\n",pstr); }    // Pause in Message block is ignored ...
-            //         else
-            //             {
-            //             line+=MultiLine(pstr,34,spdstr);
-            //             sprintf(tstr,"Block %3d (%5X):  31 - Message: %s\n",curr+1,block[curr]+10, spdstr); writeout(tstr);
-            //             sprintf(tstr,"               Duration: %d seconds\n\n",data[0]); line++; writeout(tstr);
-            //             }
-            //         break;
-            //     // Archive Info
-            //     case 0x32:  if (info!=1)
-            //             {
-            //             if (draw)
-            //                 {
-            //                 if (data[3]==0)
-            //                     {
-            //                     CopyString(spdstr,&data[5],data[4]);
-            //                     sprintf(tstr,"    Title: %s",spdstr);
-            //                     MakeFixedString(tstr, 69);
-            //                     strcpy(tstr+52," (/info for more)");
-            //                     printf("%s\n",tstr);
-            //                     }
-            //                 else
-            //                     {
-            //                     sprintf(tstr,"    Archive Info");
-            //                     MakeFixedString(tstr, 69);
-            //                     strcpy(tstr+52," (/info for more)");
-            //                     printf("%s\n",tstr);
-            //                     }
-            //                 }
-            //             }
-            //         else
-            //             {
-            //             num=data[2];
-            //             data+=3;
-            //             sprintf(tstr,"Block %3d (%5X):  32 - Archive Info:\n",curr+1,block[curr]+10); writeout(tstr);
-            //             while(num)
-            //                 {
-            //                 switch (data[0])
-            //                     {
-            //                     case    0x00:   sprintf(pstr,"         Title:"); break;
-            //                     case    0x01:   sprintf(pstr,"     Publisher:"); break;
-            //                     case    0x02:   sprintf(pstr,"     Author(s):"); break;
-            //                     case    0x03:   sprintf(pstr,"  Release Date:"); break;
-            //                     case    0x04:   sprintf(pstr,"      Language:"); break;
-            //                     case    0x05:   sprintf(pstr,"     Game Type:"); break;
-            //                     case    0x06:   sprintf(pstr,"         Price:"); break;
-            //                     case    0x07:   sprintf(pstr,"        Loader:"); break;
-            //                     case    0x08:   sprintf(pstr,"        Origin:"); break;
-            //                     default:        sprintf(pstr,"      Comments:"); break;
-            //                     }
-            //                 CopyString(spdstr,&data[2],data[1]);
-            //                 line+=MultiLine(spdstr,16,tstr);
-            //                 sprintf(spdstr,"%s %s\n",pstr,tstr); writeout(spdstr);
-            //                 data+=data[1]+2;
-            //                 num--;
-            //                 }
-            //             sprintf(tstr,"\n"); writeout(tstr);
-            //             }
-            //         break;
-            //     // Hardware Info
-            //     case 0x33:  if (data[1]==0 && data[2]>0x14 && data[2]<0x1a && data[3]==1) cpc=1;
-            //         if (data[1]==0 && data[2]==0x09 && data[3]==1) sam=1;
-            //         if (info!=1)
-            //             {
-            //             if (draw)
-            //                 {
-            //                 if (data[1]!=0 || data[3]!=1)
-            //                     {
-            //                     sprintf(tstr, "    Hardware Type");
-            //                     MakeFixedString(tstr, 69);
-            //                     strcpy(tstr+52," (/info for more)");
-            //                     printf("%s\n",tstr);
-            //                     }
-            //                 else
-            //                     {
-            //                     printf("    This tape is made for %s !\n",hid[0][data[2]]);
-            //                     }
-            //                 }
-            //             }
-            //         else
-            //             {
-            //             num=data[0];
-            //             data+=1;
-            //             sprintf(tstr,"Block %3d (%5X):  33 - Hardware Info:\n",curr+1,block[curr]+10); writeout(tstr);
-            //             for (n=0; n<4; n++)
-            //                 {
-            //                 prvi=1;
-            //                 d=data;
-            //                 for (m=0; m<num; m++)
-            //                     {
-            //                     if (d[2]==n)
-            //                         {
-            //                         if (prvi)
-            //                             {
-            //                             prvi=0;
-            //                             switch (n)
-            //                                 {
-            //                                 case 0: sprintf(pstr,"  Runs on the following hardware:\n"); writeout(pstr); break;
-            //                                 case 1: sprintf(pstr,"  Uses the following hardware:\n"); writeout(pstr); break;
-            //                                 case 2: sprintf(pstr,"  Runs, but it doesn't use the following hardware:\n"); writeout(pstr); break;
-            //                                 case 3: sprintf(pstr,"  Doesn't run on the following hardware:\n"); writeout(pstr); break;
-            //                                 }
-            //                             }
-            //                         if (!prvi && last==d[0])
-            //                             {
-            //                             for (x=0; x<lastlen; x++) spdstr[x]=' '; spdstr[x]=0;
-            //                             sprintf(pstr,"      %s  %s\n",spdstr,hid[d[0]][d[1]]); writeout(pstr);
-            //                             }
-            //                         else
-            //                             {
-            //                             sprintf(pstr,"      %s: %s\n",htype[d[0]],hid[d[0]][d[1]]); writeout(pstr);
-            //                             }
-            //                         lastlen=strlen(htype[d[0]]);
-            //                         last=d[0];
-            //                         }
-            //                     d+=3;
-            //                     }
-            //                 }
-            //             sprintf(tstr,"\n"); writeout(tstr);
-            //             }
-            //         break;
-            //     // Emulation info
-            //     case 0x34:  if (info!=1) { if (draw) printf("    Information for emulators.\n"); }
-            //         else    {   sprintf(tstr,"Block %3d (%5X):  34 - Emulation Info\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
-            //         break;
-            //     // Custom Info
-            //     case 0x35:  CopyString(pstr,data,16);
-            //         if (info!=1)
-            //             {
-            //             if (draw)
-            //                 {
-            //                 if (strcmp(pstr,"POKEs           ")) printf("    Custom Info: %s\n",pstr);  // Only Name of Custom info except POKEs is used ...
-            //                 else
-            //                     {
-            //                     sprintf(tstr,"    Custom Info: %s",pstr); 
-            //                     MakeFixedString(tstr, 69);
-            //                     strcpy(tstr+52," (/info for more)");
-            //                     printf("%s\n",tstr);
-            //                     }
-            //                 }
-            //             }
-            //         else    {
-            //                 sprintf(tstr,"Block %3d (%5X):  35 - Custom Info: %s\n",curr+1,block[curr]+10,pstr); writeout(tstr);
-            //                 if (!strcmp(pstr,"POKEs           "))
-            //                     {
-            //                     data+=20;
-            //                     if (data[0])
-            //                         {
-            //                         sprintf(pstr,"  Description:");
-            //                         CopyString(spdstr,&data[1],data[0]);
-            //                         line+=MultiLine(spdstr,15,tstr)+1;
-            //                         sprintf(spdstr,"%s %s\n\n",pstr,tstr); writeout(spdstr);
-            //                         }
-            //                     data+=data[0]+1;
-            //                     numt=data[0]; data++;
-            //                     sprintf(pstr,"          Trainer Description                       Poke Val Org Page\n"); writeout(pstr);
-            //                     sprintf(pstr,"         -------------------------------------------------------------\n"); writeout(pstr);
-            //                     while (numt)
-            //                         {
-            //                         CopyString(pstr,&data[1],data[0]);
-            //                         data+=data[0]+1;
-            //                         nump=data[0]; data++;
-            //                         for (n=0; n<nump; n++)
-            //                             {
-            //                             sprintf(spdstr,"          %s",pstr);
-            //                             MakeFixedString(spdstr,48);
-            //                             if (data[0]&8)  strcpy(tstr2,"   -");
-            //                             else            sprintf(tstr2,"%4d",data[0]&7);
-            //                             if (data[0]&32) strcpy(tstr,"  -");
-            //                             else            sprintf(tstr,"%3d",data[4]);
-            //                             if (data[0]&16) strcpy(tstr3,"  -");
-            //                             else            sprintf(tstr3,"%3d",data[3]);
-            //                             if (n>0) strcpy(tstr4,"+");
-            //                             else        strcpy(tstr4," ");
-            //                             sprintf(pstr,"%s %s %5d %s %s %s\n",spdstr, tstr4, get_uint16(&data[1]), tstr3, tstr, tstr2);
-            //                             writeout(pstr);
-            //                             data+=5;
-            //                             pstr[0]=0;
-            //                             }
-            //                         numt--;
-            //                         }
-            //                     }
-            //                 sprintf(tstr,"\n"); writeout(tstr);
-            //                 }
-            //         break;
-            //     // Snapshot
-            //     case 0x40:  if (info!=1) { if (draw) printf("    Snapshot               (Not Supported yet)\n"); }
-            //         else    {
-            //                 sprintf(tstr,"Block %3d (%5X):  40 - Snapshot\n\n",curr+1,block[curr]+10); line++; writeout(tstr);
-            //                 switch (data[0])
-            //                     {
-            //                     case 0:   sprintf(pstr,"Type: Z80"); break;
-            //                     case 1:   sprintf(pstr,"Type: SNA"); break;
-            //                     default : sprintf(pstr,"Unknown Type"); break;
-            //                     }
-            //                 sprintf(tstr,"                      %s\n\n",pstr); line++; writeout(tstr);
-            //                 }
+		// Message
+		case 0x31:
+			printf("Block ID %3d (start: %5X, len: %5X):  31 - Message\n                  Text: ",
+				tzx_current_block + 1,
+				tzx_block_offsets[tzx_current_block] + 10,
+				tzx_current_data[0]);
+			tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
+			printf("\n");
+			break;
 
-            //         break;
-            //     // ZXTape!xx
-            //     case 0x5A:  if (info!=1) { if (draw) printf("    Start of the new tape  (Merged Tapes)\n"); }
-            //         else    {   sprintf(tstr,"Block %3d (%5X):  5A - Merget Tapes\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
-            //         break;
-            */
+		// Archive Info
+		case 0x32:
+			tzx_block_parts = tzx_current_data[2];
+			tzx_current_data += 3;
+			printf("Block ID %3d (start: %5X, len: %5X):  32 - Archive Info\n                  Text: ",
+				tzx_current_block + 1,
+				tzx_block_offsets[tzx_current_block] + 10,
+				tzx_current_data[0]);
+			tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
+			printf("\n");
+
+			while (tzx_block_parts)
+			{
+				switch (tzx_current_data[0])
+				{
+				case 0x00:
+					printf("         Title:");
+					break;
+				case 0x01:
+					printf("     Publisher:");
+					break;
+				case 0x02:
+					printf("     Author(s):");
+					break;
+				case 0x03:
+					printf("  Release Date:");
+					break;
+				case 0x04:
+					printf("      Language:");
+					break;
+				case 0x05:
+					printf("     Game Type:");
+					break;
+				case 0x06:
+					printf("         Price:");
+					break;
+				case 0x07:
+					printf("        Loader:");
+					break;
+				case 0x08:
+					printf("        Origin:");
+					break;
+				default:
+					printf("      Comments:");
+					break;
+				}
+				
+				tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
+				printf("\n");
+				
+				tzx_current_data += tzx_current_data[1] + 2;
+				tzx_block_parts--;
+			}
+			break;
+		//     // Hardware Info
+		//     case 0x33:  if (data[1]==0 && data[2]>0x14 && data[2]<0x1a && data[3]==1) cpc=1;
+		//         if (data[1]==0 && data[2]==0x09 && data[3]==1) sam=1;
+		//         if (info!=1)
+		//             {
+		//             if (draw)
+		//                 {
+		//                 if (data[1]!=0 || data[3]!=1)
+		//                     {
+		//                     sprintf(tstr, "    Hardware Type");
+		//                     MakeFixedString(tstr, 69);
+		//                     strcpy(tstr+52," (/info for more)");
+		//                     printf("%s\n",tstr);
+		//                     }
+		//                 else
+		//                     {
+		//                     printf("    This tape is made for %s !\n",hid[0][data[2]]);
+		//                     }
+		//                 }
+		//             }
+		//         else
+		//             {
+		//             num=data[0];
+		//             data+=1;
+		//             sprintf(tstr,"Block %3d (%5X):  33 - Hardware Info:\n",curr+1,block[curr]+10); writeout(tstr);
+		//             for (n=0; n<4; n++)
+		//                 {
+		//                 prvi=1;
+		//                 d=data;
+		//                 for (m=0; m<num; m++)
+		//                     {
+		//                     if (d[2]==n)
+		//                         {
+		//                         if (prvi)
+		//                             {
+		//                             prvi=0;
+		//                             switch (n)
+		//                                 {
+		//                                 case 0: sprintf(pstr,"  Runs on the following hardware:\n"); writeout(pstr); break;
+		//                                 case 1: sprintf(pstr,"  Uses the following hardware:\n"); writeout(pstr); break;
+		//                                 case 2: sprintf(pstr,"  Runs, but it doesn't use the following hardware:\n"); writeout(pstr); break;
+		//                                 case 3: sprintf(pstr,"  Doesn't run on the following hardware:\n"); writeout(pstr); break;
+		//                                 }
+		//                             }
+		//                         if (!prvi && last==d[0])
+		//                             {
+		//                             for (x=0; x<lastlen; x++) spdstr[x]=' '; spdstr[x]=0;
+		//                             sprintf(pstr,"      %s  %s\n",spdstr,hid[d[0]][d[1]]); writeout(pstr);
+		//                             }
+		//                         else
+		//                             {
+		//                             sprintf(pstr,"      %s: %s\n",htype[d[0]],hid[d[0]][d[1]]); writeout(pstr);
+		//                             }
+		//                         lastlen=strlen(htype[d[0]]);
+		//                         last=d[0];
+		//                         }
+		//                     d+=3;
+		//                     }
+		//                 }
+		//             sprintf(tstr,"\n"); writeout(tstr);
+		//             }
+		//         break;
+		//     // Emulation info
+		//     case 0x34:  if (info!=1) { if (draw) printf("    Information for emulators.\n"); }
+		//         else    {   sprintf(tstr,"Block %3d (%5X):  34 - Emulation Info\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
+		//         break;
+		//     // Custom Info
+		//     case 0x35:  CopyString(pstr,data,16);
+		//         if (info!=1)
+		//             {
+		//             if (draw)
+		//                 {
+		//                 if (strcmp(pstr,"POKEs           ")) printf("    Custom Info: %s\n",pstr);  // Only Name of Custom info except POKEs is used ...
+		//                 else
+		//                     {
+		//                     sprintf(tstr,"    Custom Info: %s",pstr);
+		//                     MakeFixedString(tstr, 69);
+		//                     strcpy(tstr+52," (/info for more)");
+		//                     printf("%s\n",tstr);
+		//                     }
+		//                 }
+		//             }
+		//         else    {
+		//                 sprintf(tstr,"Block %3d (%5X):  35 - Custom Info: %s\n",curr+1,block[curr]+10,pstr); writeout(tstr);
+		//                 if (!strcmp(pstr,"POKEs           "))
+		//                     {
+		//                     data+=20;
+		//                     if (data[0])
+		//                         {
+		//                         sprintf(pstr,"  Description:");
+		//                         CopyString(spdstr,&data[1],data[0]);
+		//                         line+=MultiLine(spdstr,15,tstr)+1;
+		//                         sprintf(spdstr,"%s %s\n\n",pstr,tstr); writeout(spdstr);
+		//                         }
+		//                     data+=data[0]+1;
+		//                     numt=data[0]; data++;
+		//                     sprintf(pstr,"          Trainer Description                       Poke Val Org Page\n"); writeout(pstr);
+		//                     sprintf(pstr,"         -------------------------------------------------------------\n"); writeout(pstr);
+		//                     while (numt)
+		//                         {
+		//                         CopyString(pstr,&data[1],data[0]);
+		//                         data+=data[0]+1;
+		//                         nump=data[0]; data++;
+		//                         for (n=0; n<nump; n++)
+		//                             {
+		//                             sprintf(spdstr,"          %s",pstr);
+		//                             MakeFixedString(spdstr,48);
+		//                             if (data[0]&8)  strcpy(tstr2,"   -");
+		//                             else            sprintf(tstr2,"%4d",data[0]&7);
+		//                             if (data[0]&32) strcpy(tstr,"  -");
+		//                             else            sprintf(tstr,"%3d",data[4]);
+		//                             if (data[0]&16) strcpy(tstr3,"  -");
+		//                             else            sprintf(tstr3,"%3d",data[3]);
+		//                             if (n>0) strcpy(tstr4,"+");
+		//                             else        strcpy(tstr4," ");
+		//                             sprintf(pstr,"%s %s %5d %s %s %s\n",spdstr, tstr4, get_uint16(&data[1]), tstr3, tstr, tstr2);
+		//                             writeout(pstr);
+		//                             data+=5;
+		//                             pstr[0]=0;
+		//                             }
+		//                         numt--;
+		//                         }
+		//                     }
+		//                 sprintf(tstr,"\n"); writeout(tstr);
+		//                 }
+		//         break;
+		//     // Snapshot
+		//     case 0x40:  if (info!=1) { if (draw) printf("    Snapshot               (Not Supported yet)\n"); }
+		//         else    {
+		//                 sprintf(tstr,"Block %3d (%5X):  40 - Snapshot\n\n",curr+1,block[curr]+10); line++; writeout(tstr);
+		//                 switch (data[0])
+		//                     {
+		//                     case 0:   sprintf(pstr,"Type: Z80"); break;
+		//                     case 1:   sprintf(pstr,"Type: SNA"); break;
+		//                     default : sprintf(pstr,"Unknown Type"); break;
+		//                     }
+		//                 sprintf(tstr,"                      %s\n\n",pstr); line++; writeout(tstr);
+		//                 }
+
+		//         break;
+		//     case 0x5A:  if (info!=1) { if (draw) printf("    Start of the new tape  (Merged Tapes)\n"); }
+		//         else    {   sprintf(tstr,"Block %3d (%5X):  5A - Merget Tapes\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
+		//         break;
+
 		// Other (unknown) blocks
 		default:
 			printf("Block ID %3d (start: %5X):  %02X Unknown Block \n\n",
@@ -1106,7 +1103,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		if (tzx_current_block_type == TXZ_ID10_STANDARD || tzx_current_block_type == TXZ_ID11_TURBO || tzx_current_block_type == 0x14) // One of the data blocks ...
+		if (tzx_current_block_type == TZX_ID10_STANDARD || tzx_current_block_type == TZX_ID11_TURBO || tzx_current_block_type == 0x14) // One of the data blocks ...
 		{
 			if (tzx_current_block_type != 0x14)
 			{
@@ -1118,7 +1115,7 @@ int main(int argc, char *argv[])
 				printf("    Pure Data           ");
 			}
 
-			if (tzx_current_block_type == TXZ_ID10_STANDARD)
+			if (tzx_current_block_type == TZX_ID10_STANDARD)
 			{
 				printf("Normal Speed");
 			}
