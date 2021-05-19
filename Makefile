@@ -14,5 +14,8 @@
 all:
 	$(MAKE) -C src all
 
+git-add:
+	git add src/*.c src/inc/*.h
+	
 clean:
 	$(MAKE) -C src clean
