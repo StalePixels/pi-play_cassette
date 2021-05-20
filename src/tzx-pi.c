@@ -421,6 +421,8 @@ int main(int argc, char *argv[])
 				printf("              CheckSum: %6d ($%02X) - ",
 				       tzx_current_data[tzx_current_datablock_size - 1],
 				       tzx_current_data[tzx_current_datablock_size - 1]);
+				tzx_display_checksum(tzx_current_data, tzx_current_datablock_size);
+				printf("\n");
 				// }
 				printf("           Pilot pulse: %6d T-States\n", get_uint16(tzx_current_data - 18));
 				printf("          Pilot length: %6d pulses\n", tzx_pilot);
