@@ -9,7 +9,7 @@
 #define TZX_ID11_TURBO                   0x11    //Turbo speed data block
 #define TZX_ID12_TONE                    0x12    //Pure tone
 #define TZX_ID13_PULSES                  0x13    //Sequence of pulses of various lengths
-// #define TZX_ID14                0x14    //Pure data block
+#define TZX_ID14_PURE_DATA               0x14    //Pure data block
 // #define TZX_ID15                0x15    //Direct recording block
 // #define TZX_ID18                0x18    //CSW recording block
 // #define TZX_ID19                0x19    //Generalized data block

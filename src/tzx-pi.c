@@ -140,6 +140,7 @@ int main(int argc, char *argv[])
 		printf("              DATAFILE: \"%s\"\n", tzx_filename);
 		printf("          FILE VERSION: %d.%02d\n", tzx_version_major, tzx_version_minor);
 		printf("              SILENCED: %s\n", tzx_silent ? "YES" : "NO");
+		printf("             CPU SPEED: %1.1fMhz\n\n", (float)cpufreq / 1000000);
 	}
 
 	//************************************************************************************************//
@@ -175,20 +176,20 @@ int main(int argc, char *argv[])
 			case TZX_ID13_PULSES:
 				tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x02) + 0x01;
 				break;
-				/*
-			case 0x14:
+			case TZX_ID14_PURE_DATA:
 				tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x07]) + 0x0A;
 				break;
-			case 0x15:
-				tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x05]) + 0x08;
-				break;
-			case 0x16:
-				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
-				break;
-			case 0x17:
-				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
-				break;
-				*/
+				
+			// case 0x15:
+			// 	tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x05]) + 0x08;
+			// 	break;
+			// case 0x16:
+			// 	tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+			// 	break;
+			// case 0x17:
+			// 	tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+			// 	break;
+				
 			case TZX_ID20_PAUSE:
 				tzx_data_current_position += 0x02;
 				break;
@@ -197,26 +198,26 @@ int main(int argc, char *argv[])
 				break;
 			case TZX_ID22_GROUP_END:
 				break;
-			case 0x23:
-				tzx_data_current_position += 0x02;
-				break;
-			case 0x24:
-				tzx_data_current_position += 0x02;
-				break;
-			case 0x25:
-				break;
-			case 0x26:
-				tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) * 0x02 + 0x02;
-				break;
-			case 0x27:
-				break;
-			case 0x28:
-				tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
-				break;
+			// case 0x23:
+			// 	tzx_data_current_position += 0x02;
+			// 	break;
+			// case 0x24:
+			// 	tzx_data_current_position += 0x02;
+			// 	break;
+			// case 0x25:
+			// 	break;
+			// case 0x26:
+			// 	tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) * 0x02 + 0x02;
+			// 	break;
+			// case 0x27:
+			// 	break;
+			// case 0x28:
+			// 	tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
+			// 	break;
 
-			case 0x2A:
-				tzx_data_current_position += 0x04;
-				break;
+			// case 0x2A:
+			// 	tzx_data_current_position += 0x04;
+			// 	break;
 
 	//		Visual Display Blocks
 			case TZX_ID30_DESCRIPTION:
@@ -230,25 +231,25 @@ int main(int argc, char *argv[])
 			case TZX_ID32_ARCHIVE_INFO:
 				tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
 				break;
-	/*
-			case 0x33:
-				tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x03) + 0x01;
-				break;
-			case 0x34:
-				tzx_data_current_position += 0x08;
-				break;
-			case 0x35:
-				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x10]) + 0x14;
-				break;
 
-			case 0x40:
-				tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x01]) + 0x04;
-				break;
+			// case 0x33:
+			// 	tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x03) + 0x01;
+			// 	break;
+			// case 0x34:
+			// 	tzx_data_current_position += 0x08;
+			// 	break;
+			// case 0x35:
+			// 	tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x10]) + 0x14;
+			// 	break;
 
-			case 0x5A:
-				tzx_data_current_position += 0x09;
-				break;
-	*/
+			// case 0x40:
+			// 	tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x01]) + 0x04;
+			// 	break;
+
+			// case 0x5A:
+			// 	tzx_data_current_position += 0x09;
+			// 	break;
+				
 			default:
 				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
 				unrecognised_block++;
@@ -256,10 +257,13 @@ int main(int argc, char *argv[])
 		tzx_blockcount++;
 	}
 
-	printf("          TOTAL BLOCKS: %d\n", tzx_blockcount);
-	if (unrecognised_block)
+	if (DEBUG)
 	{
-		printf("        UNKNOWN BLOCKS: %d\n", unrecognised_block);
+		printf("          TOTAL BLOCKS: %d\n", tzx_blockcount);
+		if (unrecognised_block)
+		{
+			printf("        UNKNOWN BLOCKS: %d\n", unrecognised_block);
+		}
 	}
 
 	//************************************************************************************************//
@@ -294,8 +298,7 @@ int main(int argc, char *argv[])
 		tzx_blockcount = tzx_ending_block;
 	}
 
-	printf("             CPU SPEED: %1.1fMhz\n\n", (float)cpufreq / 1000000);
-
+	
 	//************************************************************************************************//
 	//
 	// SETTING UP SOUND CARD
@@ -313,7 +316,7 @@ int main(int argc, char *argv[])
 				      samplefreq,
 				      1,
 				      500000)) < 0)
-	{ /* 0.5sec */
+	{ 
 		shutdown(EXIT_PARAMS_SOUNDCARD, snd_strerror(err));
 	}
 
@@ -329,8 +332,8 @@ int main(int argc, char *argv[])
 	int tzx_audio_pilot;			// Actual Pilot Pulse
 	int tzx_audio_sync1;			// Sync first half-period (hp)
 	int tzx_audio_sync2;			// Sync second
-	int tzx_audio_bit0;			// Bit-0
-	int tzx_audio_bit1;			// Bit-1
+	int tzx_audio_bit0;			//  Bit-0
+	int tzx_audio_bit1;			//  Bit-1
 	int tzx_audio_bit;			// Current audio bit
 	int tzx_audio_pulse;			// Pulse in Sequence of pulses and direct recording block
 	int tzx_speed;				// Audio datarate (not related to CPU speed)
@@ -344,6 +347,8 @@ int main(int argc, char *argv[])
 	{
 		tzx_current_block_type = tzx_data[tzx_block_offsets[tzx_current_block]];
 		tzx_current_data = &tzx_data[tzx_block_offsets[tzx_current_block] + 1];
+
+		// printf("DEBUGGING BLOCK %X\n", tzx_current_block_type);
 
 		switch (tzx_current_block_type)
 		{
@@ -468,30 +473,35 @@ int main(int argc, char *argv[])
 				tzx_current_data += 2;
 			}
 			break;
+		// Pure Data
+		case TZX_ID14_PURE_DATA:
+			tzx_audio_pilot = tzx_pilot = tzx_audio_sync1 = tzx_audio_sync2 = 0;
+			tzx_audio_bit0 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[0]));
+			tzx_audio_bit1 = tzx_ticks_to_samples(get_uint16(&tzx_current_data[2]));
+			tzx_speed = (int)((1710.0 / (double)get_uint16(&tzx_current_data[2])) * 100.0);
+			tzx_bits_in_last_byte = (int)tzx_current_data[4];
+			tzx_pause = get_uint16(&tzx_current_data[5]);
+			tzx_current_datablock_size = get_uint24(&tzx_current_data[7]);
+			tzx_current_data += 10;
+			if (DEBUG)
+			{
+				printf("    Block %3d (%5X):  14 - Pure Data\n", tzx_current_block + 1,
+				       tzx_block_offsets[tzx_current_block] + 10);
+				printf("                Length: %6d bytes\n", tzx_current_datablock_size);
+				printf("                  Flag: %6d ($%02X)\n", tzx_current_data[0], tzx_current_data[0]);
+				printf("              CheckSum: %6d ($%02X) - ",
+					tzx_current_data[tzx_current_datablock_size - 1],
+					tzx_current_data[tzx_current_datablock_size - 1]);
+				tzx_display_checksum(tzx_current_data, tzx_current_datablock_size);
+				printf("\n");
+				printf("           Bit-0 pulse: %6d T-States\n", get_uint16(tzx_current_data - 10));
+				printf("           Bit-1 pulse: %6d T-States\n", get_uint16(tzx_current_data - 8));
+				printf("        Last byte used: %6d bits\n", tzx_bits_in_last_byte);
+				printf("     Pause after block: %6d milliseconds\n\n", tzx_pause);
+			}
+			break;
 
 			/*
-            // // Pure Data
-            // case 0x14:
-            //     sb_pilot=pilot=sb_sync1=sb_sync2=0;
-            //     sb_bit0=tzx_ticks_to_samples(get_uint16(&data[0]));
-            //     sb_bit1=tzx_ticks_to_samples(get_uint16(&data[2]));
-            //     tzx_speed=(int) ((1710.0/(double) get_uint16(&data[2]))*100.0);
-            //     lastbyte=(int) data[4];
-            //     tzx_pause=get_uint16(&data[5]);
-            //     tzx_current_datablock_size=get_uint24(&data[7]);
-            //     data+=10;
-            //     if (info==1)
-            //     {
-            //         sprintf(tstr,"Block %3d (%5X):  14 - Pure Data\n",curr+1,block[curr]+10); writeout(tstr);
-            //         sprintf(tstr,"                Length: %5d bytes\n",tzx_current_datablock_size); writeout(tstr);
-            //         sprintf(tstr,"                  Flag: %5d ($%02X)\n",data[0],data[0]); writeout(tstr);
-            //         sprintf(tstr,"              CheckSum: %5d ($%02X) - %s\n",data[tzx_current_datablock_size-1],data[tzx_current_datablock_size-1],GetCheckSum(data,tzx_current_datablock_size)); writeout(tstr);
-            //         sprintf(tstr,"           Bit-0 pulse: %5d T-States\n",get_uint16(data-10)); writeout(tstr);
-            //         sprintf(tstr,"           Bit-1 pulse: %5d T-States\n",get_uint16(data-8)); writeout(tstr);
-            //         sprintf(tstr,"        Last byte used: %5d bits\n",lastbyte); writeout(tstr);
-            //         sprintf(tstr,"     Pause after block: %5d milliseconds\n\n",tzx_pause); line++; writeout(tstr);
-            //     }
-            //     break;
             // // Direct Recording
             // case 0x15:
             //     sb_pulse=tzx_ticks_to_samples(get_uint16(&data[0]));
@@ -677,18 +687,25 @@ int main(int argc, char *argv[])
 			
 		// Group Start
 		case TZX_ID21_GROUP_START:
-			printf("    Block %3d (%5X):  21 - Group Start\n", tzx_current_block + 1,
-				tzx_block_offsets[tzx_current_block] + 10);
-			tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
+			if (DEBUG)
+			{
+				printf("    Block %3d (%5X):  21 - Group Start\n", tzx_current_block + 1,
+					tzx_block_offsets[tzx_current_block] + 10);
+				tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
+			}
 			break;
 			
 		// Group End
 		case TZX_ID22_GROUP_END:
-			printf("    Block %3d (%5X):  22 - Group End\n", tzx_current_block + 1,
-				tzx_block_offsets[tzx_current_block] + 10);
-			tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
+			if (DEBUG)
+			{
+				printf("    Block %3d (%5X):  22 - Group End\n", tzx_current_block + 1,
+					tzx_block_offsets[tzx_current_block] + 10);
+				tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
+			}
 			break;
-/*
+
+			/*
             // Jump To Relative
             //     case 0x23:  jump=(signed short) (data[0]+data[1]*256);
             //         if (info!=1)
@@ -884,141 +901,154 @@ int main(int argc, char *argv[])
             */
 		// Description
 		case TZX_ID30_DESCRIPTION:
-			printf("Block ID %3d (start: %5X, len: %5X):  30 - Description\n                  Text: ",
-				tzx_current_block + 1,
-				tzx_block_offsets[tzx_current_block] + 10,
-				tzx_current_data[0]);
+			if (DEBUG)
+			{
+				printf("Block ID %3d (start: %5X, len: %5X):  30 - Description\n                  Text: ",
+				       tzx_current_block + 1,
+				       tzx_block_offsets[tzx_current_block] + 10,
+				       tzx_current_data[0]);
 
-			tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
-			printf("\n");
+				tzx_print_string(&tzx_current_data[1], tzx_current_data[0]);
+				printf("\n");
+			}
 			break;
+			
 		// Message
 		case TZX_ID31_MESSAGE:
-			printf("Block ID %3d (start: %5X, len: %5X):  31 - Message\n                  Text: ",
-				tzx_current_block + 1,
-				tzx_block_offsets[tzx_current_block] + 10,
-				tzx_current_data[0]);
-			tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
-			printf("\n");
+			if (DEBUG)
+			{
+				printf("Block ID %3d (start: %5X, len: %5X):  31 - Message\n                  Text: ",
+				       tzx_current_block + 1,
+				       tzx_block_offsets[tzx_current_block] + 10,
+				       tzx_current_data[0]);
+				tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
+				printf("\n");
+			}
 			break;
-
+			
 		// Archive Info
 		case TZX_ID32_ARCHIVE_INFO:
-			tzx_block_parts = tzx_current_data[2];
-			tzx_current_data += 3;
-			printf("Block ID %3d (start: %5X, len: %5X):  32 - Archive Info\n                  Text: ",
-				tzx_current_block + 1,
-				tzx_block_offsets[tzx_current_block] + 10,
-				tzx_current_data[0]);
-			tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
-			printf("\n");
-
-			while (tzx_block_parts)
+			if (DEBUG)
 			{
-				switch (tzx_current_data[0])
-				{
-				case 0x00:
-					printf("         Title:");
-					break;
-				case 0x01:
-					printf("     Publisher:");
-					break;
-				case 0x02:
-					printf("     Author(s):");
-					break;
-				case 0x03:
-					printf("  Release Date:");
-					break;
-				case 0x04:
-					printf("      Language:");
-					break;
-				case 0x05:
-					printf("     Game Type:");
-					break;
-				case 0x06:
-					printf("         Price:");
-					break;
-				case 0x07:
-					printf("        Loader:");
-					break;
-				case 0x08:
-					printf("        Origin:");
-					break;
-				default:
-					printf("      Comments:");
-					break;
-				}
-				
+				tzx_block_parts = tzx_current_data[2];
+				tzx_current_data += 3;
+				printf("Block ID %3d (start: %5X, len: %5X):  32 - Archive Info\n                  Text: ",
+				       tzx_current_block + 1,
+				       tzx_block_offsets[tzx_current_block] + 10,
+				       tzx_current_data[0]);
 				tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
 				printf("\n");
 				
-				tzx_current_data += tzx_current_data[1] + 2;
-				tzx_block_parts--;
+				while (tzx_block_parts)
+				{
+					switch (tzx_current_data[0])
+					{
+					case 0x00:
+						printf("         Title:");
+						break;
+					case 0x01:
+						printf("     Publisher:");
+						break;
+					case 0x02:
+						printf("     Author(s):");
+						break;
+					case 0x03:
+						printf("  Release Date:");
+						break;
+					case 0x04:
+						printf("      Language:");
+						break;
+					case 0x05:
+						printf("     Game Type:");
+						break;
+					case 0x06:
+						printf("         Price:");
+						break;
+					case 0x07:
+						printf("        Loader:");
+						break;
+					case 0x08:
+						printf("        Origin:");
+						break;
+					default:
+						printf("      Comments:");
+						break;
+					}
+					tzx_print_string(&tzx_current_data[2], tzx_current_data[1]);
+					printf("\n");
+
+					tzx_current_data += tzx_current_data[1] + 2;
+					tzx_block_parts--;
+				}
 			}
 			break;
-		//     // Hardware Info
-		//     case 0x33:  if (data[1]==0 && data[2]>0x14 && data[2]<0x1a && data[3]==1) cpc=1;
-		//         if (data[1]==0 && data[2]==0x09 && data[3]==1) sam=1;
-		//         if (info!=1)
-		//             {
-		//             if (draw)
-		//                 {
-		//                 if (data[1]!=0 || data[3]!=1)
-		//                     {
-		//                     sprintf(tstr, "    Hardware Type");
-		//                     MakeFixedString(tstr, 69);
-		//                     strcpy(tstr+52," (/info for more)");
-		//                     printf("%s\n",tstr);
-		//                     }
-		//                 else
-		//                     {
-		//                     printf("    This tape is made for %s !\n",hid[0][data[2]]);
-		//                     }
-		//                 }
-		//             }
-		//         else
-		//             {
-		//             num=data[0];
-		//             data+=1;
-		//             sprintf(tstr,"Block %3d (%5X):  33 - Hardware Info:\n",curr+1,block[curr]+10); writeout(tstr);
-		//             for (n=0; n<4; n++)
-		//                 {
-		//                 prvi=1;
-		//                 d=data;
-		//                 for (m=0; m<num; m++)
-		//                     {
-		//                     if (d[2]==n)
-		//                         {
-		//                         if (prvi)
-		//                             {
-		//                             prvi=0;
-		//                             switch (n)
-		//                                 {
-		//                                 case 0: sprintf(pstr,"  Runs on the following hardware:\n"); writeout(pstr); break;
-		//                                 case 1: sprintf(pstr,"  Uses the following hardware:\n"); writeout(pstr); break;
-		//                                 case 2: sprintf(pstr,"  Runs, but it doesn't use the following hardware:\n"); writeout(pstr); break;
-		//                                 case 3: sprintf(pstr,"  Doesn't run on the following hardware:\n"); writeout(pstr); break;
-		//                                 }
-		//                             }
-		//                         if (!prvi && last==d[0])
-		//                             {
-		//                             for (x=0; x<lastlen; x++) spdstr[x]=' '; spdstr[x]=0;
-		//                             sprintf(pstr,"      %s  %s\n",spdstr,hid[d[0]][d[1]]); writeout(pstr);
-		//                             }
-		//                         else
-		//                             {
-		//                             sprintf(pstr,"      %s: %s\n",htype[d[0]],hid[d[0]][d[1]]); writeout(pstr);
-		//                             }
-		//                         lastlen=strlen(htype[d[0]]);
-		//                         last=d[0];
-		//                         }
-		//                     d+=3;
-		//                     }
-		//                 }
-		//             sprintf(tstr,"\n"); writeout(tstr);
-		//             }
-		//         break;
-		//     // Emulation info
+			
+		// Hardware Info
+		case 0x33:
+			// if (tzx_current_data[1] == 0 && tzx_current_data[2] > 0x14 && tzx_current_data[2] < 0x1a && tzx_current_data[3] == 1)
+			// 	cpc = 1;
+			// if (tzx_current_data[1] == 0 && tzx_current_data[2] == 0x09 && data[3] == 1)
+			// 	sam = 1;
+			
+			// num = tzx_current_data[0];
+			tzx_current_data += 1;
+			printf("Block ID %3d (start: %5X, len: %5X):  33 - Hardware Info\n",
+				tzx_current_block + 1,
+				tzx_block_offsets[tzx_current_block] + 10,
+				tzx_current_data[0]);
+			// for (n = 0; n < 4; n++)
+			// {
+			// 	prvi = 1;
+			// 	d = data;
+			// 	for (m = 0; m < num; m++)
+			// 	{
+			// 		if (d[2] == n)
+			// 		{
+			// 			if (prvi)
+			// 			{
+			// 				prvi = 0;
+			// 				switch (n)
+			// 				{
+			// 				case 0:
+			// 					sprintf(pstr, "  Runs on the following hardware:\n");
+			// 					writeout(pstr);
+			// 					break;
+			// 				case 1:
+			// 					sprintf(pstr, "  Uses the following hardware:\n");
+			// 					writeout(pstr);
+			// 					break;
+			// 				case 2:
+			// 					sprintf(pstr, "  Runs, but it doesn't use the following hardware:\n");
+			// 					writeout(pstr);
+			// 					break;
+			// 				case 3:
+			// 					sprintf(pstr, "  Doesn't run on the following hardware:\n");
+			// 					writeout(pstr);
+			// 					break;
+			// 				}
+			// 			}
+			// 			if (!prvi && last == d[0])
+			// 			{
+			// 				for (x = 0; x < lastlen; x++)
+			// 					spdstr[x] = ' ';
+			// 				spdstr[x] = 0;
+			// 				sprintf(pstr, "      %s  %s\n", spdstr, hid[d[0]][d[1]]);
+			// 				writeout(pstr);
+			// 			}
+			// 			else
+			// 			{
+			// 				sprintf(pstr, "      %s: %s\n", htype[d[0]], hid[d[0]][d[1]]);
+			// 				writeout(pstr);
+			// 			}
+			// 			lastlen = strlen(htype[d[0]]);
+			// 			last = d[0];
+			// 		}
+			// 		d += 3;
+			// 	}
+			// }
+			break;
+		//     // Emulation info		
+/*
 		//     case 0x34:  if (info!=1) { if (draw) printf("    Information for emulators.\n"); }
 		//         else    {   sprintf(tstr,"Block %3d (%5X):  34 - Emulation Info\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
 		//         break;
@@ -1099,7 +1129,8 @@ int main(int argc, char *argv[])
 		//     case 0x5A:  if (info!=1) { if (draw) printf("    Start of the new tape  (Merged Tapes)\n"); }
 		//         else    {   sprintf(tstr,"Block %3d (%5X):  5A - Merget Tapes\n\n",curr+1,block[curr]+10); line++; writeout(tstr); }
 		//         break;
-
+*/
+		
 		// Other (unknown) blocks
 		default:
 			printf("Block ID %3d (start: %5X):  %02X Unknown Block \n\n",
