@@ -162,90 +162,96 @@ int main(int argc, char *argv[])
 
 		switch (tzx_data[tzx_data_current_position - 1])
 		{
-		case TZX_ID10_STANDARD:
-			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x02]) + 0x04;
-			break;
-		case TZX_ID11_TURBO:
-			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x0F]) + 0x12;
-			break;
-		case TZX_ID12_TONE:
-			tzx_data_current_position += 0x04;
-			break;
-		case TZX_ID13_PULSES:
-			tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x02) + 0x01;
-			break;
-		case 0x14:
-			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x07]) + 0x0A;
-			break;
-		case 0x15:
-			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x05]) + 0x08;
-			break;
-		case 0x16:
-			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
-			break;
-		case 0x17:
-			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
-			break;
-		case TZX_ID20_PAUSE:
-			tzx_data_current_position += 0x02;
-			break;
-		case TZX_ID21_GROUP_START:
-			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
-			break;
-		case TZX_ID22_GROUP_END:
-			break;
-		case 0x23:
-			tzx_data_current_position += 0x02;
-			break;
-		case 0x24:
-			tzx_data_current_position += 0x02;
-			break;
-		case 0x25:
-			break;
-		case 0x26:
-			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) * 0x02 + 0x02;
-			break;
-		case 0x27:
-			break;
-		case 0x28:
-			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
-			break;
+			// DATA BLOCKS
+			case TZX_ID10_STANDARD:
+				tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x02]) + 0x04;
+				break;
+			case TZX_ID11_TURBO:
+				tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x0F]) + 0x12;
+				break;
+			case TZX_ID12_TONE:
+				tzx_data_current_position += 0x04;
+				break;
+			case TZX_ID13_PULSES:
+				tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x02) + 0x01;
+				break;
+				/*
+			case 0x14:
+				tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x07]) + 0x0A;
+				break;
+			case 0x15:
+				tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x05]) + 0x08;
+				break;
+			case 0x16:
+				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+				break;
+			case 0x17:
+				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+				break;
+				*/
+			case TZX_ID20_PAUSE:
+				tzx_data_current_position += 0x02;
+				break;
+			case TZX_ID21_GROUP_START:
+				tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
+				break;
+			case TZX_ID22_GROUP_END:
+				break;
+			case 0x23:
+				tzx_data_current_position += 0x02;
+				break;
+			case 0x24:
+				tzx_data_current_position += 0x02;
+				break;
+			case 0x25:
+				break;
+			case 0x26:
+				tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) * 0x02 + 0x02;
+				break;
+			case 0x27:
+				break;
+			case 0x28:
+				tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
+				break;
 
-		case 0x2A:
-			tzx_data_current_position += 0x04;
-			break;
-			
-		case TZX_ID30_DESCRIPTION:
-			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
-			break;
-/*
-		case 0x31:
-			tzx_data_current_position += tzx_data[tzx_data_current_position + 0x01] + 0x02;
-			break;
-		case 0x32:
-			tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
-			break;
-		case 0x33:
-			tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x03) + 0x01;
-			break;
-		case 0x34:
-			tzx_data_current_position += 0x08;
-			break;
-		case 0x35:
-			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x10]) + 0x14;
-			break;
+			case 0x2A:
+				tzx_data_current_position += 0x04;
+				break;
 
-		case 0x40:
-			tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x01]) + 0x04;
-			break;
+	//		Visual Display Blocks
+			case TZX_ID30_DESCRIPTION:
+				tzx_data_current_position += tzx_data[tzx_data_current_position + 0x00] + 0x01;
+				break;
 
-		case 0x5A:
-			tzx_data_current_position += 0x09;
-			break;
-*/
-		default:
-			tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
-			unrecognised_block++;
+			case TZX_ID31_MESSAGE:
+				tzx_data_current_position += tzx_data[tzx_data_current_position + 0x01] + 0x02;
+				break;
+
+			case TZX_ID32_ARCHIVE_INFO:
+				tzx_data_current_position += get_uint16(&tzx_data[tzx_data_current_position + 0x00]) + 0x02;
+				break;
+	/*
+			case 0x33:
+				tzx_data_current_position += (tzx_data[tzx_data_current_position + 0x00] * 0x03) + 0x01;
+				break;
+			case 0x34:
+				tzx_data_current_position += 0x08;
+				break;
+			case 0x35:
+				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x10]) + 0x14;
+				break;
+
+			case 0x40:
+				tzx_data_current_position += get_uint24(&tzx_data[tzx_data_current_position + 0x01]) + 0x04;
+				break;
+
+			case 0x5A:
+				tzx_data_current_position += 0x09;
+				break;
+	*/
+			default:
+				tzx_data_current_position += get_uint32(&tzx_data[tzx_data_current_position + 0x00]) + 0x04;
+				unrecognised_block++;
 		}
 		tzx_blockcount++;
 	}
@@ -887,7 +893,7 @@ int main(int argc, char *argv[])
 			printf("\n");
 			break;
 		// Message
-		case 0x31:
+		case TZX_ID31_MESSAGE:
 			printf("Block ID %3d (start: %5X, len: %5X):  31 - Message\n                  Text: ",
 				tzx_current_block + 1,
 				tzx_block_offsets[tzx_current_block] + 10,
@@ -897,7 +903,7 @@ int main(int argc, char *argv[])
 			break;
 
 		// Archive Info
-		case 0x32:
+		case TZX_ID32_ARCHIVE_INFO:
 			tzx_block_parts = tzx_current_data[2];
 			tzx_current_data += 3;
 			printf("Block ID %3d (start: %5X, len: %5X):  32 - Archive Info\n                  Text: ",

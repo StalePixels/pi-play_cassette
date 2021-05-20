@@ -25,8 +25,8 @@
 // #define TZX_ID2A                0x2A    //Stop the tape is in 48K mode
 // #define TZX_ID2B                0x2B    //Set signal level
 #define TZX_ID30_DESCRIPTION             0x30    //Text description
-// #define TZX_ID31                0x31    //Message block
-// #define TZX_ID32                0x32    //Archive info
+#define TZX_ID31_MESSAGE                 0x31    //Message block
+#define TZX_ID32_ARCHIVE_INFO            0x32    //Archive info
 // #define TZX_ID33                0x33    //Hardware type
 // #define TZX_ID35                0x35    //Custom info block
 // #define TZX_ID5A                0x5A    //Glue block (90 dec, ASCII Letter 'Z')
