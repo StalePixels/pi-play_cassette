@@ -1,6 +1,6 @@
 # nextpi-play_cassette
 
-A tape player for ZX Spectrum (and other 8bit micro) tape images — TZX, TAP, PZX, and CSW — built on libspectrum. Adds the transport controls of a real tape player (pause, rewind to previous block, bookmarks, jump-to-block) and variable playback speed.
+A tape player for ZX Spectrum (and other 'raw pulse' 8bit micro) tape images — TZX, TAP, PZX, and CSW — built on libspectrum. Adds the transport controls of a real tape player (pause, rewind to previous block, bookmarks, jump-to-block) and variable playback speed.
 
 The `v1` branch holds an earlier cleanroom TZX-only player, halted 2023-03-14 due to lack of transport-control API at the hardware level.
 
