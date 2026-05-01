@@ -1,4 +1,4 @@
-# play_cassette
+# nextpi-play_cassette
 
 A tape player for ZX Spectrum (and other 8bit micro) tape images — TZX, TAP, PZX, and CSW — built on libspectrum. Adds the transport controls of a real tape player (pause, rewind to previous block, bookmarks, jump-to-block) and variable playback speed.
 
